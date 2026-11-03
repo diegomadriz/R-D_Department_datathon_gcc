@@ -1,0 +1,50 @@
+# Entornos y cachés de Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# MLflow local
+mlruns/
+mlartifacts/
+mlflow.db
+
+# Databricks (estado local del bundle/CLI)
+.databricks/
+.databrickscfg
+
+# Spark local
+spark-warehouse/
+metastore_db/
+derby.log
+
+# Secretos, tokens y credenciales
+*.env
+.env*
+*.pem
+*.key
+*.p12
+*token*
+*secret*
+credentials*.json
+service-account*.json
+auth.json
+
+# Outputs pesados generados (se regeneran con el pipeline)
+outputs/
+artifacts/
+reports/generated/
+*.pkl
+*.joblib
+
+# Sistema operativo y editores
+.DS_Store
+.idea/
+.vscode/
+
+# El CSV de data/ SÍ se versiona (no agregar reglas que lo excluyan)
