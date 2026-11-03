@@ -1,0 +1,37 @@
+# Configuración del medallón (Bronze / Silver / Gold).
+# Reglas: docs/adr/0002-hallazgos-f0-reglas-de-limpieza.md. Arquitectura: docs/adr/0003.
+#
+# El split se asigna una sola vez. `test_fold` se fijó en 0 ANTES de ver cualquier resultado
+# y no se cambia para "mejorar" el test: si una comprobación de viabilidad falla, el job falla
+# y la corrección se decide en un ADR.
+
+raw_file: datathon_data_gcc.csv
+
+split:
+  n_splits: 5
+  test_fold: 0
+  random_state: 42
+  test_fraction_min: 0.18
+  test_fraction_max: 0.22
+  min_groups_per_stratum: 5
+  # Tipos que deben aparecer en train y en test.
+  required_types_both_sides: [Type 1, Type 2, Type 3]
+  # Tipos que se agrupan en el estrato `rare` (solo para estratificar).
+  rare_types: [Type 4, Type 5]
+  # Bins de cuantil por tipo: cuartiles en Type 1 y mediana en Types 2 y 3.
+  n_bins:
+    Type 1: 4
+    Type 2: 2
+    Type 3: 2
+
+# Conteos esperados según el data audit de la Fase 0. Solo se exigen cuando el hash del CSV
+# coincide con `source_sha256`; si el CSV cambia, la comprobación se omite y queda registrada.
+expected_counts:
+  source_sha256: e410cbb15aa00d25c8d16b49d6a4486dbece185c5af77a3fdf3d72a50cc83b83
+  bronze: 791
+  silver: 773
+  duplicates_removed: 0
+  quarantine:
+    empty_row: 8
+    no_features: 5
+    no_target: 5
