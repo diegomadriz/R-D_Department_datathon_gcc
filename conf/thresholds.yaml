@@ -1,0 +1,57 @@
+# Umbrales de desempeño por target.
+# ESTADO: provisional, falta el benchmark oficial de los organizadores.
+#
+# Origen de cada número: docs/fase0/data_audit.md (secciones 3 y 6),
+# regenerable con `uv run python -m gcc_strength.audit`.
+#
+# Reglas:
+# - Los valores "orientativos" del baseline se calcularon in-sample sobre el dataset
+#   completo y SOLO sirven para dimensionar. En la Fase 3 se sustituyen por el baseline L1
+#   (media por ProductType) evaluado con CV repetida 5x5 sobre el 80% de train.
+# - Ningún umbral se ajusta viendo el lockbox (test).
+
+status: provisional
+source: docs/fase0/data_audit.md
+units_targets: psi (hipotesis, no verificada con GCC)
+
+# Reproducible: data_audit_results.md §6 (baseline_by_type_in_sample). Usa las futuras filas de
+# test (perfil marginal de targets por tipo), por eso NO se usa para decidir nada.
+baseline_l1_in_sample_orientativo:   # media por ProductType, dataset completo, in-sample
+  Strength1:  {r2: 0.657, mae: 161, mape_pct: 7.14, n: 740}
+  Strength7:  {r2: 0.496, mae: 302, mape_pct: 4.98, n: 769}
+  Strength28: {r2: 0.357, mae: 407, mape_pct: 5.57, n: 732}
+
+# Piso de ruido empírico: cota superior aproximada del MAPE de un predictor perfecto,
+# estimada con 160 pares casi-duplicados (Chebyshev < 0.05, mismo tipo):
+# MAPE ~ 0.8365 x diferencia relativa mediana (errores normales independientes).
+# No hay réplicas verdaderas, así que no es una medición. La repetibilidad de ASTM C109 /
+# EN 196-1 no está verificada. Referencia: ASTM C109/C109M-21, CV de un solo laboratorio ≈ 3.1/3.9/3.8%
+# (1/7/28 d), lo que da un MAPE de un predictor perfecto de ≈ 2.5/3.1/3.0%.
+noise_floor_mape_pct_upper_bound:
+  Strength1: 4.4
+  Strength7: 2.9
+  Strength28: 3.2
+
+internal_thresholds:   # se evalúan con CV sobre train (F3) y una vez en el lockbox (F4)
+  rule_beat_l1: >-
+    Para cada target, el MAE y el MAPE del modelo deben ser menores que los de L1 y los IC
+    bootstrap al 95% no deben traslaparse. El R2 debe ser mayor que el de L1.
+  rule_within_type: >-
+    Se reporta el R2 dentro de Type 1 (n suficiente). Debe ser > 0 con un IC que no incluya 0.
+  leakage_alarm: >-
+    El piso de ruido es una COTA SUPERIOR del ruido, así que un modelo legítimo podría quedar
+    algo por debajo. Si el MAPE de CV queda por debajo de noise_floor_mape_pct_upper_bound,
+    se pide una auditoría de fuga antes de seguir (revisión obligatoria, no veto automático).
+    Un MAPE por debajo de la mitad de ese valor se trata como fuga hasta demostrar lo contrario.
+  rule_monotonicity: >-
+    El 100% de las predicciones cumple R1 <= R7 <= R28 (las violaciones observadas en los datos: 0%).
+  rule_interval_coverage: >-
+    Intervalos conformales al 90% nominal: la cobertura empírica (CV y lockbox) debe caer en
+    [0.85, 0.95] por target.
+  comparison_vs_l1_method: >-
+    PROPUESTA pendiente de ADR antes de F3: bootstrap pareado de la diferencia de MAE
+    (modelo - L1) sobre las mismas filas, con IC 95% < 0. Comparar IC separados es demasiado
+    conservador con n_test de unas 146 filas.
+  targets_numericos: null   # se fijan al cierre de F3 con el baseline L1 por CV; no se inventan
+
+benchmark_oficial: null   # R2 / MAE / MAPE por horizonte cuando lo publiquen los organizadores
