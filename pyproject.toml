@@ -4,7 +4,8 @@ version = "0.1.0"
 description = "Cement strength prediction (R1/R7/R28) for Datathon MICAI 2026, GCC challenge"
 # Databricks serverless environment version 6 uses Python 3.12.3
 requires-python = "==3.12.*"
-# Exact pins match Databricks serverless environment version 6 (standard/ML base).
+# Exact pins match Databricks serverless environment version 6 (standard/ML base), except
+# statsmodels, which env 6 does not preinstall (docs/fase0/databricks_capabilities.md).
 # Packages not shipped in that environment use lower bounds; uv.lock fixes the exact version.
 dependencies = [
     "pandas==2.3.3",
@@ -19,6 +20,7 @@ dependencies = [
     "plotly>=6.0",
     "openpyxl>=3.1.5",
     "jupyter>=1.1.1",
+    "tabulate>=0.9",
 ]
 
 [dependency-groups]
