@@ -1,0 +1,128 @@
+# Databricks Asset Bundle del proyecto (ADR 0003).
+#
+# Cada integrante despliega en su propia cuenta con su perfil del CLI:
+#   databricks bundle validate -t <integrante> -p <perfil>
+#   databricks bundle deploy   -t <integrante> -p <perfil>
+#   databricks bundle run gcc_end_to_end -t <integrante> -p <perfil>
+# El host y las credenciales viven solo en el archivo de perfiles del CLI, nunca aquí (ADR 0001).
+
+bundle:
+  name: gcc_strength
+
+variables:
+  catalog:
+    description: Catálogo de Unity Catalog del proyecto (se crea con SQL en el bootstrap).
+    default: datathon
+  schema:
+    description: Esquema del reto GCC.
+    default: gcc
+
+# Solo se sincroniza lo que el job necesita. `src/` se importa desde estos archivos
+# (sys.path), sin construir un wheel (ADR 0004).
+sync:
+  paths:
+    - ./src
+    - ./notebooks
+    - ./conf
+    - ./data
+
+resources:
+  jobs:
+    gcc_end_to_end:
+      name: gcc_end_to_end
+      description: Medallón de punta a punta (bootstrap, Bronze, Silver, Gold, reconciliación).
+      max_concurrent_runs: 1
+      tags:
+        project: gcc_strength
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+        - name: bundle_root
+          default: ${workspace.file_path}
+        - name: run_id
+          default: "{{job.run_id}}"
+      environments:
+        - environment_key: medallion
+          spec:
+            environment_version: "6"
+            dependencies:
+              # Ya viene en el entorno 6; se fija para que un cambio de entorno falle a la vista.
+              - pyyaml==6.0.3
+      tasks:
+        - task_key: bootstrap
+          environment_key: medallion
+          notebook_task:
+            notebook_path: ./notebooks/00_bootstrap.py
+        - task_key: bronze
+          depends_on:
+            - task_key: bootstrap
+          environment_key: medallion
+          notebook_task:
+            notebook_path: ./notebooks/01_bronze.py
+        - task_key: silver
+          depends_on:
+            - task_key: bronze
+          environment_key: medallion
+          notebook_task:
+            notebook_path: ./notebooks/02_silver.py
+        - task_key: gold
+          depends_on:
+            - task_key: silver
+          environment_key: medallion
+          notebook_task:
+            notebook_path: ./notebooks/03_gold.py
+        - task_key: reconcile
+          depends_on:
+            - task_key: gold
+          environment_key: medallion
+          notebook_task:
+            notebook_path: ./notebooks/04_dq_reconcile.py
+        # TODO (Fases 2-6): se agregan cuando existan sus notebooks, en este orden:
+        #   eda -> train -> evaluate -> register -> publish_tables -> rubric_audit
+        # - train/evaluate usarán un environment "ml" con environment_version "6" y
+        #   dependencies lightgbm==4.6.0 y shap==0.51.0 (las mismas versiones que pyproject.toml).
+        # - evaluate (lockbox) corre una sola vez, después del gate de auditoría.
+
+    gcc_reset_schema:
+      name: gcc_reset_schema
+      description: >-
+        Borra las tablas (reset_mode=tables) o el esquema completo (reset_mode=schema) para
+        probar el job desde un esquema vacío. Exige confirm_reset=<catalog>.<schema>.
+      max_concurrent_runs: 1
+      tags:
+        project: gcc_strength
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+        - name: bundle_root
+          default: ${workspace.file_path}
+        - name: confirm_reset
+          default: ""
+        - name: reset_mode
+          default: tables
+      environments:
+        - environment_key: medallion
+          spec:
+            environment_version: "6"
+            dependencies:
+              - pyyaml==6.0.3
+      tasks:
+        - task_key: reset_schema
+          environment_key: medallion
+          notebook_task:
+            notebook_path: ./notebooks/99_reset_schema.py
+
+# Un target por integrante. No llevan host ni perfil: se elige la cuenta con -p <perfil>.
+targets:
+  diego:
+    default: true
+    mode: development
+  # Plantillas: idénticas a diego; cada quien despliega en su cuenta con su perfil.
+  ricardo:
+    mode: development
+  christopher:
+    mode: development
