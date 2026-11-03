@@ -6,7 +6,9 @@ description = "Cement strength prediction (R1/R7/R28) for Datathon MICAI 2026, G
 requires-python = "==3.12.*"
 # Exact pins match Databricks serverless environment version 6 (standard/ML base), except
 # statsmodels, which env 6 does not preinstall (docs/fase0/databricks_capabilities.md).
-# Packages not shipped in that environment use lower bounds; uv.lock fixes the exact version.
+# lightgbm and shap are not preinstalled either: they are pinned here and declared with the
+# same versions in the job environment (databricks.yml). Local-only tooling uses lower bounds;
+# uv.lock fixes the exact version.
 dependencies = [
     "pandas==2.3.3",
     "numpy==2.3.4",
@@ -21,6 +23,11 @@ dependencies = [
     "openpyxl>=3.1.5",
     "jupyter>=1.1.1",
     "tabulate>=0.9",
+    "mlflow-skinny==3.12.0",
+    "databricks-sdk==0.122.0",
+    "lightgbm==4.6.0",
+    "shap==0.51.0",
+    "pyyaml==6.0.3",
 ]
 
 [dependency-groups]
@@ -43,3 +50,8 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# Databricks notebooks: `spark`/`dbutils` are runtime globals and imports follow the
+# sys.path setup cell.
+"notebooks/*.py" = ["F821", "E402", "I001"]
