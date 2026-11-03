@@ -49,7 +49,7 @@ internal_thresholds:   # se evalúan con CV sobre train (F3) y una vez en el loc
     Intervalos conformales al 90% nominal: la cobertura empírica (CV y lockbox) debe caer en
     [0.85, 0.95] por target.
   comparison_vs_l1_method: >-
-    PROPUESTA pendiente de ADR antes de F3: bootstrap pareado de la diferencia de MAE
+    ADR 0002 (punto 14): bootstrap pareado de la diferencia de MAE
     (modelo - L1) sobre las mismas filas, con IC 95% < 0. Comparar IC separados es demasiado
     conservador con n_test de unas 146 filas.
   targets_numericos: null   # se fijan al cierre de F3 con el baseline L1 por CV; no se inventan
