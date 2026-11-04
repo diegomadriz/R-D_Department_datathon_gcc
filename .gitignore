@@ -48,3 +48,6 @@ reports/generated/
 .vscode/
 
 # El CSV de data/ SÍ se versiona (no agregar reglas que lo excluyan)
+
+# Evidencia local completa transportada al workspace por sync.include
+/data/training_evidence/
