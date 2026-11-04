@@ -55,3 +55,12 @@ internal_thresholds:   # se evalúan con CV sobre train (F3) y una vez en el loc
   targets_numericos: null   # se fijan al cierre de F3 con el baseline L1 por CV; no se inventan
 
 benchmark_oficial: null   # R2 / MAE / MAPE por horizonte cuando lo publiquen los organizadores
+
+# ADR 0008: fijados antes de abrir el lockbox, sin ajuste posterior.
+lockbox:
+  adversarial_auc_max: 0.6
+  # Distancia euclídea: mediana + z-score ajustados solo en train; tipo one-hot.
+  # Se cuentan pares cruzados con distancia <= 0.10, excluidos los exactos.
+  near_duplicate_distance: 0.10
+  bootstrap_resamples: 10000
+  coverage_target: 0.90
