@@ -16,7 +16,7 @@ Incluye un pipeline medallón reproducible en Databricks con Unity Catalog, entr
 | Modelado con CV y MLflow | Completo | [Fase 3](docs/fase3/modelado.md) |
 | Evaluación única del lockbox | Completa | [Fase 4](docs/fase4/lockbox.md) |
 | Job de punta a punta en Databricks | Completo en modo `guided` | [Sección 5](#5-ejecución-en-databricks) |
-| Dashboard, simulador y ROI | **Pendiente: no incluidos en este repositorio** | [`dashboards/`](dashboards/) y [`app/`](app/) solo contienen su descripción |
+| App de resultados y simulador | Disponible, con acceso por contraseña; se despliega con [`app/DEPLOY.md`](app/DEPLOY.md) | [`app/`](app/), [ADR 0010](docs/adr/0010-app-vercel-y-dashboard-minimo.md) |
 
 ## 1. Resultados
 
@@ -90,6 +90,7 @@ Las decisiones están documentadas en [`docs/adr/`](docs/adr/):
 | [0007](docs/adr/0007-arquitectura-multisalida-e-incertidumbre.md) | Arquitectura multisalida e incertidumbre |
 | [0008](docs/adr/0008-protocolo-lockbox.md) | Protocolo del lockbox |
 | [0009](docs/adr/0009-entrenamiento-y-registro-en-databricks.md) | Entrenamiento y registro en Databricks |
+| [0010](docs/adr/0010-app-vercel-y-dashboard-minimo.md) | App de resultados y dashboard |
 
 ## 5. Ejecución en Databricks
 
@@ -171,8 +172,8 @@ pipelines/            Reservado; el medallón corre como job de notebooks
 tests/unit/           Pruebas de lógica
 tests/rubric/         Comprobaciones de la rúbrica y de higiene
 docs/                 Enunciado, reportes por fase, ADR y runbook
-dashboards/           Reservado para dashboards exportados (pendiente)
-app/                  Reservado para el simulador (pendiente)
+dashboards/           Reservado para dashboards AI/BI exportados
+app/                  App de resultados y simulador
 databricks.yml        Bundle: jobs, entornos y targets
 ```
 
