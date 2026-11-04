@@ -21,8 +21,8 @@ Los parámetros de ML se validan con funciones puras antes de leer datos.
 La cadena es secuencial. Tracking `databricks`, registry `databricks-uc` y
 experimento `experiment_path`. MLflow transfiere artefactos entre tareas; los
 IDs concretos viajan con task values, sin depender de archivos temporales compartidos.
-`train_mode` admite `full` (por defecto) o `quick` (diagnósticos reducidos, modelos
-finales siempre con 621 filas). `lockbox_mode` admite exclusivamente `replay`.
+`train_mode` admite `guided` (por defecto; diagnósticos locales verificados), `full`
+(recalcula todo) o `quick` (diagnósticos reducidos), con modelos finales siempre de 621 filas. `lockbox_mode` admite exclusivamente `replay`.
 
 `07_lockbox.py` conserva el envoltorio local histórico de un único intento, fuera
 del bundle: **no ejecutarlo**, el intento oficial ya se consumió. El replay nunca

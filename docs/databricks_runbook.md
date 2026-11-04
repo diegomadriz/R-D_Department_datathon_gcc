@@ -4,8 +4,8 @@ Esta guía sirve para macOS y Windows, en la cuenta propia de cualquier integran
 Los textos entre `<...>` se sustituyen; no se copian literalmente. No requiere
 subir el CSV a mano: el bootstrap lo verifica y copia desde los archivos del bundle.
 La ejecución realiza medallón, EDA, entrenamiento, replay del resultado oficial,
-registro UC y publicación de tablas. La integración en Databricks está pendiente
-hasta que un integrante ejecute estos pasos; los tests locales no la certifican.
+registro UC y publicación de tablas. El modo `guided` se verificó de punta a punta
+en Databricks (run `937701051902203`, 801 s); `full` aún no se ha ejecutado allí.
 El modo predeterminado `guided` reutiliza diagnósticos completos locales
 verificados y ajusta los modelos finales en el job. `full` recalcula también
 todos los diagnósticos, sin requerir ese paquete.
@@ -196,7 +196,7 @@ Cualquiera de los modos registra una versión UC y mueve el alias si pasa los ga
 | eda | 1–5 min, con 2 000 remuestreos descriptivos |
 | train full | 10–30 min; referencia local histórica ≈8 min, serverless usa permutaciones secuenciales |
 | train quick | 1–5 min; prueba local ≈19 s sin arranque del entorno |
-| train guided | Tiempo remoto NO VERIFICADO; verifica evidencia y hace solo el ajuste final y logging |
+| train guided | 151 s medidos en una corrida; verifica evidencia y hace solo el ajuste final y logging |
 | evaluate | 1–5 min; conserva bootstrap 10 000 y calibración CV+ completa |
 | register | 0.5–3 min |
 | publish | 1–5 min |
@@ -207,9 +207,8 @@ instalación incluidos. El consumo depende del hardware y de la caché del entor
 no existe una conversión verificada a DBU ni un importe monetario para este job.
 La cuota diaria gratuita no tiene una cifra publicada. Un solo full puede agotarla;
 quick tampoco es gratuito en términos de cuota. No lanzar varios jobs a la vez.
-No hay una cifra de ahorro medida para guided. El primer intento quick falló en
-la consulta de modelos de MLflow; la paginación se corrigió localmente, pero eso
-no certifica todavía el resto de la integración.
+Una corrida guided completa tardó 801 s en total. No hay una cifra de ahorro frente
+a full, porque full aún no se ha medido en Databricks.
 
 ## 6. Verificar
 

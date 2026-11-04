@@ -191,3 +191,7 @@ La huella ya no detecta cambios por debajo de 12 dígitos. El ajuste en Databric
 esos valores remotos, por lo que sus predicciones pueden diferir mínimamente de las
 locales; el replay sigue siendo el control de que los agregados coinciden. Corregir el
 parseo de Silver queda como mejora posterior, porque cambiaría los valores de Gold.
+
+Verificación: con este cambio, el run `937701051902203` en modo guided terminó con éxito
+en 801 s, con replay aprobado, alias `champion` y las cuatro tablas de consumo.
+La corrida `full` sigue sin ejecutarse en Databricks.
