@@ -1,6 +1,6 @@
 # ADR 0005: Features físicas y preprocesamiento para la Fase 3
 
-- **Estado:** Propuesto; revisión química aprobada con ajustes incorporados
+- **Estado:** Aceptado; decisiones de representación basadas en CV sobre train
 - **Fecha:** 2026-11-03
 - **Relacionados:** ADR 0002 y ADR 0003
 - **Evidencia:** [interpretación Fase 2](../fase2/eda.md) y [tablas reproducibles de train](../fase2/eda_results.md)
@@ -9,7 +9,23 @@
 
 Gold contiene 621 filas de train y un split persistido que no se modifica. Las variables originales están pre-escaladas y sus identidades físicas no están confirmadas por GCC. A es redundante con B/C; las fases no tienen cierre comprobado. Hay deriva de orden, grupos de ensayo y tipos con muy pocos datos. Los análisis de esta fase generan propuestas; no eligen un predictor por desempeño.
 
-## Propuesta
+## Decisiones tras la CV
+
+Se aceptan las representaciones, exclusiones y reglas de preprocesamiento descritas
+abajo como el protocolo de modelado. En la escalera, el mejor GPR por target usa
+variables crudas y el indicador de ausencia de `Physical_Metric_A`; Huber usa el
+submodelo para R1 y R28 y el indicador para R7. LightGBM usa el indicador en las
+tres edades, representación física en R28 y cruda en R1/R7; la restricción positiva
+de `Physical_Metric_B` se seleccionó para R1. Los resultados y la incertidumbre de
+esta selección están en [la escalera](../fase3/escalera.md). Ninguna de estas
+decisiones identifica la química de las columnas ni valida desempeño futuro.
+
+La selección multisalida provisional es GPR con modelos independientes y
+proyección isotónica; sigue pendiente la revisión independiente de fuga y
+sobreajuste, y el lockbox permanece cerrado. Los detalles están en
+[multisalida](../fase3/multisalida.md).
+
+## Protocolo de features
 
 ### 1. Dos representaciones candidatas, sin targets como inputs
 
