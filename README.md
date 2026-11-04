@@ -6,6 +6,8 @@ Incluye un pipeline medallón reproducible en Databricks con Unity Catalog, entr
 
 **Equipo:** Diego, Ricardo y Christopher.
 
+**App de resultados y simulador:** <https://gcc-resistencia.vercel.app/>
+
 ## Estado
 
 | Componente | Estado | Evidencia |
@@ -16,7 +18,7 @@ Incluye un pipeline medallón reproducible en Databricks con Unity Catalog, entr
 | Modelado con CV y MLflow | Completo | [Fase 3](docs/fase3/modelado.md) |
 | Evaluación única del lockbox | Completa | [Fase 4](docs/fase4/lockbox.md) |
 | Job de punta a punta en Databricks | Completo en modo `guided` | [Sección 5](#5-ejecución-en-databricks) |
-| App de resultados y simulador | Disponible, con acceso por contraseña; se despliega con [`app/DEPLOY.md`](app/DEPLOY.md) | [`app/`](app/), [ADR 0010](docs/adr/0010-app-vercel-y-dashboard-minimo.md) |
+| App de resultados y simulador | Publicada en <https://gcc-resistencia.vercel.app/>, con acceso por contraseña; guía de despliegue en [`app/DEPLOY.md`](app/DEPLOY.md) | [`app/`](app/), [ADR 0010](docs/adr/0010-app-vercel-y-dashboard-minimo.md) |
 
 ## 1. Resultados
 
