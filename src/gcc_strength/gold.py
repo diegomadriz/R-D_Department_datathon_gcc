@@ -85,3 +85,8 @@ def feature_frame(gold: pd.DataFrame) -> pd.DataFrame:
     """Raw candidate inputs only; partition metadata and targets are excluded by construction."""
     cols = [c for c in FEATURE_COLUMNS if c not in NON_FEATURE_COLUMNS]
     return gold[cols]
+
+
+def gold_lockbox_size(gold: pd.DataFrame) -> int:
+    """Count held-out partition metadata during split construction only."""
+    return int(gold[SPLIT_COL].eq("test").sum())

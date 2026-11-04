@@ -31,7 +31,7 @@ from gcc_strength.config import (
     ROOT,
     load_medallion_conf,
 )
-from gcc_strength.gold import build_gold, gold_lockbox_digest
+from gcc_strength.gold import build_gold, gold_lockbox_digest, gold_lockbox_size
 from gcc_strength.silver import REASONS, build_silver
 from gcc_strength.split import GROUP_COL, SPLIT_COL, lockbox_check, read_lockbox, write_lockbox
 
@@ -88,7 +88,7 @@ def run(
     rows += gold_rows
 
     digest = gold_lockbox_digest(gold)
-    n_test = int((gold[SPLIT_COL] == "test").sum())
+    n_test = gold_lockbox_size(gold)
     stored = read_lockbox(lockbox_path)
     written = False
     if stored is None or rewrite_lockbox:

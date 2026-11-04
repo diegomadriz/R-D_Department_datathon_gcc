@@ -33,6 +33,7 @@ from gcc_strength.dq import dq_row
 
 GROUP_COL = "strength_group_id"
 SPLIT_COL = "split"
+PARTITION_LABELS = ("train", "test")
 RARE = "rare"
 NA_BIN = "na"
 

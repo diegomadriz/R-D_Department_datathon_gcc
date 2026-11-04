@@ -17,6 +17,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 from gcc_strength.audit import CATEGORICAL, FEATURES, TARGETS
 from gcc_strength.config import ROOT
+from gcc_strength.split import PARTITION_LABELS
 
 DEFAULT_GOLD = ROOT / "outputs/medallion/datathon_data_gold.parquet"
 DEFAULT_OUT = ROOT / "docs/fase2"
@@ -76,11 +77,11 @@ def load_train(path: Path | str = DEFAULT_GOLD) -> pd.DataFrame:
     Parquet predicate pushdown excludes test features, targets and metadata from the frame.
     """
     labels = pd.read_parquet(path, columns=["split"])["split"]
-    if not labels.isin(["train", "test"]).all():
+    if not labels.isin(PARTITION_LABELS).all():
         raise ValueError("Unexpected or missing partition label")
     selected = pd.read_parquet(path, filters=[("split", "==", "train")])
     result = train_only(selected)
-    result.attrs["lockbox_size"] = int(labels.eq("test").sum())
+    result.attrs["lockbox_size"] = len(labels) - int(labels.eq("train").sum())
     return result
 
 
