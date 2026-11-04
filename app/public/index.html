@@ -1,0 +1,1418 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resistencia del cemento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=Martian+Mono:wdth,wght@87.5,400&display=swap" rel="stylesheet">
+<style>
+/* Dirección A · Ficha técnica mineral (referencia visual congelada v1).
+   Archivo (OFL, eje de ancho, cifras tabulares) + Martian Mono solo para identificadores y columnas originales.
+   Azul GCC como única tinta de datos; rojo GCC solo para "bajo meta"; ámbar para "en vigilancia" y "fuera de la región con datos". */
+:root{
+  --paper:#F4F3EF; --surface:#FFFFFF; --rule:#DDD9D4; --rule-2:#E9E6E1;
+  --ink:#050117; --ink-2:#525160; --ink-3:#6B6975; --muted-mark:#8C8A95;
+  --age1:#5F88E3; --age2:#004CD7; --age3:#011288; --action:#004CD7; --interval:#DCE6FA;
+  --off:#E30613; --off-ink:#C00410; --off-wash:#FCEBEC; --caution:#A15C00; --caution-wash:#FBF1E3; --ok:#1F6B45;
+  --f:"Archivo",ui-sans-serif,system-ui,sans-serif; --m:"Martian Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box} html,body{margin:0}
+body{font-family:var(--f);font-variation-settings:"wdth" 100;background:var(--paper);color:var(--ink);font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums slashed-zero;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--action);outline-offset:2px}
+.id{font-family:var(--m);font-size:11.5px;letter-spacing:-.01em}
+.wide{font-variation-settings:"wdth" 118} .cond{font-variation-settings:"wdth" 87}
+.ink2{color:var(--ink-2)} .ink3{color:var(--ink-3)} .sm{font-size:12.5px} .xs{font-size:12px}
+
+/* ---------- barra superior ---------- */
+.bar{display:flex;align-items:center;gap:28px;height:60px;padding:0 32px;border-bottom:1px solid var(--rule);background:var(--paper);position:sticky;top:0;z-index:20}
+.name{font-weight:650;font-size:16px;letter-spacing:-.01em;font-variation-settings:"wdth" 116;white-space:nowrap}
+.name span{color:var(--ink-3);font-weight:400;font-variation-settings:"wdth" 100;margin-left:8px;font-size:13px}
+.nav{display:flex;gap:22px;height:100%}
+.nav button{all:unset;cursor:pointer;display:flex;align-items:center;height:100%;font-size:14px;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px}
+.nav button:hover{color:var(--ink)}
+.nav button[aria-current="page"]{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+.nav button:focus-visible{outline-offset:-2px}
+.meta-r{margin-left:auto;text-align:right;font-size:12px;color:var(--ink-3);line-height:1.35;white-space:nowrap}
+.meta-r b{color:var(--ink-2);font-weight:500}
+.proto{background:var(--surface);border-bottom:1px solid var(--rule);font-size:12px;color:var(--ink-2);padding:6px 32px}
+.proto b{color:var(--caution);font-weight:600}
+
+/* ---------- página ---------- */
+.page{display:none;max-width:1360px;margin:0 auto;padding:28px 32px 64px} .page.on{display:block}
+.head{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:24px}
+.head h1{font-size:30px;line-height:1.1;font-weight:650;letter-spacing:-.02em;margin:0;font-variation-settings:"wdth" 112}
+.head .sub{color:var(--ink-2);margin-top:6px;font-size:14.5px}
+.head .act{margin-left:auto;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.txtbtn{all:unset;cursor:pointer;font-size:13.5px;color:var(--action);font-weight:500}
+.txtbtn:hover{text-decoration:underline;text-underline-offset:3px}
+.btn{all:unset;cursor:pointer;font-size:13px;font-weight:600;color:#fff;background:var(--action);padding:6px 12px;border-radius:3px;white-space:nowrap;display:inline-block}
+.btn:hover{background:#003BA8}
+.btn.sec{background:var(--ink)}
+.btn.sec:hover{background:#252136}
+.panel{background:var(--surface);border-radius:4px;padding:20px 22px;min-width:0}
+.panel h2{font-size:15.5px;font-weight:650;margin:0;letter-spacing:-.005em}
+.panel .ph{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.panel .ph p{margin:0;color:var(--ink-2);font-size:13px;flex-basis:100%}
+.panel .ph .r{margin-left:auto}
+.src{margin-top:14px;font-size:12px;color:var(--ink-3)}
+.src .id{font-size:11px}
+
+/* ---------- simulador ---------- */
+.sim{display:grid;grid-template-columns:minmax(300px,4fr) minmax(0,8fr);gap:24px;align-items:start}
+.inputs{position:sticky;top:84px;max-height:calc(100vh - 108px);overflow:auto}
+.lotline{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.types{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+.types button{all:unset;cursor:pointer;padding:8px 10px;font-size:13px;line-height:1.26;border-left:1px solid var(--rule)}
+.types button:first-child{border-left:0}
+.types button small{display:block;color:var(--ink-3);font-size:11.5px;margin-top:2px}
+.types button[aria-pressed="true"]{background:var(--ink);color:#fff} .types button[aria-pressed="true"] small{color:#C9C7CF}
+.types-note{font-size:12px;color:var(--ink-3);margin:8px 0 0}
+.panel-note{font-size:12px;color:var(--ink-2);background:var(--paper);padding:8px 10px;border-radius:3px;margin:10px 0 0}
+.grp{font-size:13px;font-weight:650;margin:20px 0 2px;padding-top:12px;border-top:1px solid var(--rule-2)}
+.var{padding:9px 0 7px}
+.var .top{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.var label{font-size:13.5px;font-weight:500}
+.var .code{font-family:var(--m);font-size:11px;color:var(--ink-3);letter-spacing:-.01em;margin-top:1px}
+.var .conf-low{font-size:11.5px;color:var(--caution);font-weight:500}
+.var .lev{font-size:11.5px;color:var(--action);font-weight:500}
+.var output{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--ink-2);min-width:34px;text-align:right}
+.var .ctrl-row{display:grid;grid-template-columns:minmax(0,1fr) 78px 42px;gap:8px;align-items:center;margin-top:4px}
+.var input[type=number]{width:100%;padding:3px 6px;border:1px solid var(--rule);border-radius:3px;background:var(--surface);font-family:var(--m);font-size:11.5px;text-align:right;color:var(--ink)}
+.var input[type=number]:disabled{opacity:.4;background:var(--paper);cursor:not-allowed}
+.var input[type=number].out{border-color:var(--caution);background:var(--caution-wash)}
+.var .u-orig{font-family:var(--m);font-size:10.5px;color:var(--ink-3);white-space:nowrap}
+.var .env{font-size:12px;color:var(--ink-3);margin-top:2px}
+.var .env.out{color:var(--caution);font-weight:500}
+.var .na{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink-3);margin-top:4px}
+.var .na input{accent-color:var(--ink)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:18px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:linear-gradient(var(--ink),var(--ink)) 0/var(--p,50%) 100% no-repeat,var(--rule)}
+input[type=range]::-moz-range-track{height:2px;background:var(--rule)} input[type=range]::-moz-range-progress{height:2px;background:var(--ink)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:18px;border-radius:2px;background:var(--ink);margin-top:-8px}
+input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:2px;background:var(--ink);border:0}
+input[type=range]:disabled{opacity:.35;cursor:not-allowed}
+.results{display:flex;flex-direction:column;gap:24px;min-width:0}
+.readout{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
+.ro{padding:2px 20px 0;border-left:1px solid var(--rule)} .ro:first-child{padding-left:0;border-left:0}
+.ro .age{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2)}
+.ro .age i{width:18px;height:3px;display:inline-block}
+.ro .num{font-size:46px;line-height:1.05;font-weight:600;letter-spacing:-.03em;font-variation-settings:"wdth" 118;margin-top:6px;white-space:nowrap}
+.ro .num small{font-size:15px;font-weight:500;color:var(--ink-2);letter-spacing:0;margin-left:5px;font-variation-settings:"wdth" 100}
+.ro .rng{font-size:12.5px;color:var(--ink-2);margin-top:4px}
+.unit-note{font-size:12px;color:var(--ink-3);margin:-14px 0 -8px}
+.verdict{display:flex;gap:14px;align-items:flex-start;padding:14px 18px;border-radius:4px;background:var(--surface)}
+.verdict.off{background:var(--off-wash)}
+.verdict.watch{background:var(--caution-wash)}
+.verdict .t{font-size:16px;font-weight:650;letter-spacing:-.005em}
+.verdict .t{color:var(--ok)} .verdict.off .t{color:var(--off-ink)} .verdict.watch .t{color:var(--caution)}
+.verdict .d{font-size:13px;color:var(--ink-2);margin-top:2px}
+.verdict .p{margin-left:auto;text-align:right;white-space:nowrap}
+.verdict .p b{display:block;font-size:22px;font-weight:600;font-variation-settings:"wdth" 112}
+.verdict .p span{font-size:12px;color:var(--ink-2)}
+.warn{display:none;gap:10px;padding:10px 14px;border-radius:3px;background:var(--caution-wash);color:var(--ink);font-size:13px}
+.warn.show{display:flex}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2)}
+.legend i{display:inline-block;vertical-align:middle;margin-right:6px}
+
+table.t{width:100%;border-collapse:collapse;font-size:13.5px;font-variation-settings:"wdth" 92}
+table.t th{text-align:left;font-weight:500;color:var(--ink-3);font-size:12px;padding:0 10px 8px;border-bottom:1px solid var(--ink);white-space:nowrap;vertical-align:bottom}
+table.t td{padding:9px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+table.t th:first-child,table.t td:first-child{padding-left:0} table.t th:last-child,table.t td:last-child{padding-right:0}
+table.t .n{text-align:right;white-space:nowrap}
+table.t tr.sel td{background:#EEF3FC}
+table.t tr.bad-row td{background:var(--off-wash)}
+
+table.t tbody tr.go{cursor:pointer} table.t tbody tr.go:hover td{background:#F7F6F2}
+table.t tbody tr.go.bad-row:hover td{background:#F9DFE1}
+.tw{overflow-x:auto}
+.st{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.st i{width:8px;height:8px;display:inline-block}
+.st.off{color:var(--off-ink)} .st.off i{background:var(--off)}
+.st.watch{color:var(--caution)} .st.watch i{background:var(--caution)}
+.st.ok{color:var(--ok)} .st.ok i{background:var(--ok)}
+.st.none{color:var(--ink-3)} .st.none i{background:transparent;border:1px solid var(--ink-3)}
+.contrib .row{display:grid;grid-template-columns:150px minmax(0,1fr) 58px;gap:12px;align-items:center;padding:5px 0;font-size:13px}
+.contrib .bar{position:relative;height:10px}
+.contrib .bar::before{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:1px;background:var(--rule)}
+.contrib .bar i{position:absolute;top:0;bottom:0}
+.contrib .v{text-align:right;color:var(--ink-2)}
+.imp .row{display:grid;grid-template-columns:175px minmax(0,1fr) 64px;gap:12px;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px solid var(--rule-2)}
+.imp .row:last-of-type{border-bottom:0}
+.imp .bar{position:relative;height:10px;background:var(--paper)}
+.imp .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--action)}
+.imp .v{text-align:right;color:var(--ink-2);font-family:var(--m);font-size:11.5px}
+.flag{color:var(--caution);font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+.seg button{all:unset;cursor:pointer;font-size:12.5px;padding:4px 10px;border-left:1px solid var(--rule)}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.sel-ctl{padding:4px 8px;border:1px solid var(--rule);border-radius:3px;background:var(--surface);font-size:12.5px;color:var(--ink);max-width:100%}
+.phys-list{display:flex;flex-direction:column;gap:12px}
+.phys-item{padding:10px 12px;background:var(--paper);border-radius:3px;font-size:13px;line-height:1.45}
+.phys-item b{color:var(--ink);font-weight:600}
+.sentence{font-size:15px;color:var(--ink-2);margin:0 0 16px}
+.sentence b{color:var(--ink);font-weight:600}
+.sentence .st{margin:0 2px}
+.mult{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+.metaheader{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;padding:14px 0;border-top:1px solid var(--ink);border-bottom:1px solid var(--rule);margin-bottom:24px}
+.metaheader div{font-size:13px} .metaheader span{display:block;font-size:12px;color:var(--ink-3)}
+.tip{position:fixed;pointer-events:none;z-index:99;background:var(--ink);color:#fff;font-size:12.5px;padding:8px 10px;border-radius:3px;display:none;max-width:280px;line-height:1.45}
+.tip b{font-weight:600}
+svg{display:block;max-width:100%}
+svg text{font-family:var(--f);font-variant-numeric:tabular-nums}
+svg .tick{font-size:11.5px;fill:var(--ink-3)}
+svg .lbl{font-size:12px;fill:var(--ink-2)}
+svg .val{font-size:12px;fill:var(--ink);font-weight:500}
+
+.cols-req{display:flex;flex-wrap:wrap;gap:6px 10px;margin:10px 0 14px;padding:10px 12px;background:var(--paper);border-radius:3px}
+.cols-req .id{font-size:11.5px;color:var(--ink)}
+.lotes-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.lotes-bar{display:flex;align-items:center; justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--rule-2)}
+
+.src .id{overflow-wrap:anywhere}
+[data-drift],[data-types-conf],[data-inv],[data-curve],[data-torn],[data-vmae],[data-res-hist],[data-hex-qual],[data-hex-oof]{overflow-x:auto}
+@media (max-width:1180px){ .meta-r{display:none} }
+@media (max-width:1000px){ .bar{height:auto;flex-wrap:wrap;gap:6px 18px;padding:12px 24px 0} .nav{order:3;width:100%;overflow-x:auto;height:42px;gap:18px} }
+@media (max-width:480px){ .name span{display:none} .name{white-space:normal} .head .act{margin-left:0;flex-wrap:wrap} .head .act label{white-space:normal} .seg{flex-wrap:wrap} .verdict .p{white-space:normal} .var .ctrl-row{grid-template-columns:minmax(0,1fr) 72px 38px} }
+@media (max-width:1100px){ .sim{grid-template-columns:1fr} .inputs{position:static;max-height:none} .results{order:-1} .two,.mult{grid-template-columns:1fr} .metaheader{grid-template-columns:1fr 1fr} }
+@media (max-width:760px){
+  .bar{height:auto;flex-wrap:wrap;gap:6px 18px;padding:12px 16px 0} .nav{order:3;width:100%;overflow-x:auto;height:42px;gap:18px} .meta-r{display:none}
+  .proto{padding:6px 16px} .page{padding:20px 16px 48px} .head h1{font-size:25px}
+  .readout{grid-template-columns:1fr} .ro{border-left:0;padding:10px 0;border-top:1px solid var(--rule)} .ro:first-child{border-top:0}
+  .ro .num{font-size:38px} .verdict{flex-wrap:wrap} .verdict .p{margin-left:0;text-align:left}
+  .contrib .row,.imp .row{grid-template-columns:110px minmax(0,1fr) 52px} .panel{padding:16px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="name">Resistencia del cemento<span>GCC · control de calidad</span></div>
+  <nav class="nav" aria-label="Secciones">
+    <button data-go="sim" aria-current="page">Simulador</button>
+    <button data-go="res">Resistencias</button>
+    <button data-go="lotes">Lotes</button>
+    <button data-go="mod">Modelos y confianza</button>
+    <button data-go="val">Valor</button>
+    <button data-go="evi">Evidencia</button>
+  </nav>
+  <div class="meta-r">Modelo <b>GPR · champion</b><br>Datos al <b>03 nov 2026</b></div>
+</header>
+<div class="proto"><b>Versión de evaluación.</b> El simulador usa una aproximación del modelo GPR, que difiere de él en 36 / 120 / 125 psi a 1 / 7 / 28 días. Distribuciones, densidades, importancia, conteos históricos y métricas son reales (entrenamiento y test). Los lotes y el ROI son ejemplos. Metas, unidades (psi) e identidades químicas están sin confirmar con GCC.</div>
+
+<!-- SIMULADOR -->
+<main class="page on" data-page="sim">
+  <div class="head"><div><h1>Simulador</h1><div class="sub">Resistencia esperada a 1, 7 y 28 días con la calidad medida el día 0.</div></div>
+    <div class="act"><button class="txtbtn" data-reset>Restablecer lote de ejemplo</button></div></div>
+  <div class="sim">
+    <section class="panel inputs" aria-label="Calidad del lote">
+      <div class="lotline"><h2>Calidad del lote</h2><span class="id ink2" data-lotid></span></div>
+      <div class="types" data-types role="group" aria-label="Tipo de producto"></div>
+      <p class="types-note">Type 4 (probable albañilería C91) y Type 5 (probable Tipo IP puzolánico, confianza baja) no se pueden simular: hay 4 y 1 lotes en entrenamiento.</p>
+      <p class="panel-note">Nombres: interpretación probable de columnas anónimas; sin confirmar con GCC.</p>
+      <div data-vars></div>
+      <p class="src">Deslizador en percentil y captura numérica sincronizada en la unidad original escalada (<span class="id">[0, 1]</span> o <span class="id">z-score</span>). Las variables marcadas como <span style="color:var(--action)">palanca</span> se ajustan en planta. Unidades de resistencia (psi) sin confirmar con GCC.</p>
+    </section>
+    <div class="results">
+      <div class="readout" data-readout></div>
+      <p class="unit-note">Nota fija: las unidades (psi) están sin confirmar con GCC; la conversión a MPa asume psi.</p>
+      <div class="verdict" data-verdict></div>
+      <div class="warn" data-envwarn><span style="color:var(--caution);font-weight:700">!</span><span data-envwarntext></span></div>
+      <section class="panel">
+        <div class="ph"><h2>Curva de resistencia</h2><div class="r legend" data-curve-legend><span><i style="width:16px;height:2px;background:var(--ink)"></i>Esperada</span><span><i style="width:14px;height:10px;background:var(--interval)"></i>Intervalo 90%</span><span><i style="width:16px;border-top:1.5px dashed var(--ink-2)"></i>Meta 28 días</span></div>
+          <p>Valores en 1, 7 y 28 días; entre edades la curva es una interpolación.</p></div>
+        <div data-curve></div>
+        <p class="src">Fuente: <span class="id">datathon.gcc.gcc_strength_champion@champion</span> · meta interna por tipo: supuesto pendiente de confirmar con GCC · unidades (psi) sin confirmar.</p>
+      </section>
+      <div class="two">
+        <section class="panel"><div class="ph"><h2>Qué cambiar para cumplir</h2><p>Cambio mínimo para que el límite inferior a 28 días alcance la meta.</p></div><div data-inv></div></section>
+        <section class="panel"><div class="ph"><h2>Por qué este número</h2><div class="r seg" data-ages></div><p>Cuánto mueve cada variable la predicción respecto a la mediana del tipo.</p></div><div class="contrib" data-contrib></div></section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- RESISTENCIAS (§3.4) -->
+<main class="page" data-page="res">
+  <div class="head">
+    <div><h1>Resistencias</h1><div class="sub">Distribuciones por edad, relación calidad–resistencia y predicciones OOF sobre entrenamiento (§3.4).</div></div>
+    <div class="act">
+      <span class="sm ink2">Filtro <span class="id">ProductType</span> (compartido):</span>
+      <div class="seg" data-pt-filter role="group" aria-label="Filtro por tipo de producto"></div>
+    </div>
+  </div>
+
+  <!-- 1. Distribución de R1, R7 y R28 -->
+  <section class="panel" style="margin-bottom:24px">
+    <div class="ph">
+      <h2>Distribución de R1, R7 y R28</h2>
+      <div class="r"><span class="st ok"><i></i><b>Datos reales · train</b></span></div>
+      <p>Small multiples de histogramas por edad (<span class="id">Strength1</span>, <span class="id">Strength7</span>, <span class="id">Strength28</span>) con la rampa de edad.</p>
+    </div>
+    <div class="mult" data-res-hist></div>
+    <p class="src">Fuente: entrenamiento (621 filas), solo agregados. Se ocultan los conteos y las celdas con menos de 5 registros. Unidades (psi) sin confirmar.</p>
+  </section>
+
+  <!-- 2. Calidad contra resistencia y 3. Predicho contra real -->
+  <section class="panel" style="margin-bottom:24px">
+    <div class="ph">
+      <h2>Calidad contra resistencia</h2>
+      <div class="r" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span class="st ok"><i></i><b>Datos reales · train</b></span>
+        <label class="xs ink2" for="qual-var-sel">Variable:</label>
+        <select id="qual-var-sel" class="sel-ctl" data-qual-var aria-label="Variable de calidad"></select>
+        <div class="seg" data-qual-age role="group" aria-label="Edad para calidad contra resistencia"></div>
+      </div>
+      <p>Densidad de la variable seleccionada (en su unidad escalada original) contra la resistencia. <b>Se ocultan las celdas con menos de N registros (N = 5)</b> para no exponer filas individuales.</p>
+    </div>
+    <div data-hex-qual></div>
+    <p class="src">Fuente: entrenamiento (621 filas), solo agregados. Se ocultan los conteos y las celdas con menos de 5 registros. Unidades (psi) sin confirmar.</p>
+  </section>
+
+  <section class="panel">
+    <div class="ph">
+      <h2>Predicho contra real</h2>
+      <div class="r"><span class="st ok"><i></i><b>Datos reales · train</b></span></div>
+      <p><b>Predicciones OOF sobre entrenamiento; el test no se muestra fila a fila.</b> Densidad por edad del modelo campeón (<span class="id">GPR</span>) con línea identidad 1:1. <b>Se ocultan las celdas con menos de N registros (N = 5).</b></p>
+    </div>
+    <div class="mult" data-hex-oof></div>
+    <p class="src">Fuente: entrenamiento (621 filas), solo agregados. Se ocultan los conteos y las celdas con menos de 5 registros. Unidades (psi) sin confirmar.</p>
+  </section>
+</main>
+
+<!-- LOTES -->
+<main class="page" data-page="lotes">
+  <div class="head">
+    <div><h1>Lotes</h1><div class="sub">Evalúa un archivo de lotes contra la meta a 28 días. Los lotes bajo meta se resaltan a primera vista.</div></div>
+    <div class="act">
+      <span class="sm ink2">Filtro <span class="id">ProductType</span> (compartido):</span>
+      <div class="seg" data-pt-filter role="group" aria-label="Filtro por tipo de producto"></div>
+    </div>
+  </div>
+
+  <!-- Estado vacío / validación de archivo CSV (oculto al inicio; se abre con "Quitar ejemplo") -->
+  <section class="panel" data-lotes-empty style="margin-bottom:24px;display:none">
+    <div class="ph">
+      <h2>Evaluar archivo CSV</h2>
+      <p>Sube un archivo CSV separado por comas con una fila por lote. El archivo se procesa en el servidor y no se guarda.</p>
+    </div>
+    <div class="sm ink2">Columnas requeridas (<span class="id">ProductType</span> y las 11 variables originales de <span class="id">VARS</span>; <span class="id">lot_id</span> opcional):</div>
+    <div class="cols-req" data-req-cols></div>
+    <div class="lotes-actions">
+      <label class="btn" for="csv-file" tabindex="0">Seleccionar archivo CSV</label>
+      <input type="file" id="csv-file" accept=".csv,text/csv" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden" data-csv-input>
+      <button class="btn sec" data-use-synth>Cargar ejemplo sintético</button>
+    </div>
+    <div data-csv-feedback style="margin-top:16px;display:none"></div>
+    <p class="src">En esta referencia visual solo se validan los encabezados en el navegador. El archivo se procesa en el servidor y no se guarda.</p>
+  </section>
+
+  <!-- Estado con ejemplo sintético (visible desde el inicio) -->
+  <section class="panel" data-lotes-synth style="margin-bottom:24px">
+    <div class="lotes-bar">
+      <div>
+        <span class="st watch"><i></i><b>Valores de ejemplo · Ejemplo sintético</b></span>
+        <span class="sm ink2" style="margin-left:8px">Lotes ilustrativos evaluados con la aproximación del modelo (IDs <span class="id">EJ-001…</span>, semilla 42)</span>
+      </div>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        <div class="seg" data-lf></div>
+        <button class="txtbtn" data-back-empty>Quitar ejemplo</button>
+      </div>
+    </div>
+    <p class="sentence" data-lsentence></p>
+    <div class="tw"><table class="t" data-ltable></table></div>
+    <p class="src">Valores de ejemplo (ejemplo sintético) · Las filas en rojo (<span class="st off"><i></i>Bajo meta</span>) resaltan los lotes cuya predicción a 28 días cae bajo la meta del tipo. Selecciona una fila (clic o Enter) para abrir el lote en el simulador.</p>
+  </section>
+
+  <!-- Histórico agregado por tipo y estado -->
+  <section class="panel">
+    <div class="ph">
+      <h2>Histórico por tipo y estado</h2>
+      <div class="r"><span class="st ok"><i></i><b>Datos reales · train</b></span></div>
+      <p>Predicciones OOF de train con filas con R28 medido, contra las metas internas (supuesto).</p>
+    </div>
+    <div class="tw"><table class="t" data-lhist></table></div>
+    <p class="src">Fuente: predicciones OOF de train, una repetición, solo conteos. No se exponen filas. Las metas son un supuesto pendiente de confirmar con GCC.</p>
+  </section>
+</main>
+
+<!-- MODELOS -->
+<main class="page" data-page="mod">
+  <div class="head">
+    <div><h1>Modelos y confianza</h1><div class="sub">Comparación 3 modelos × 3 edades en validación y test, importancia por edad y límites de confianza.</div></div>
+    <div class="act">
+      <span class="sm ink2">Filtro <span class="id">ProductType</span> (compartido):</span>
+      <div class="seg" data-pt-filter role="group" aria-label="Filtro por tipo de producto"></div>
+      <label class="sm ink2" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-align checked style="accent-color:var(--ink)">Misma escala en las tres edades</label>
+    </div>
+  </div>
+  <section class="panel" style="margin-bottom:24px">
+    <div class="ph">
+      <h2>Comparación de 3 modelos × 3 edades (R², MAE y MAPE en validación y test)</h2>
+      <p>○ validación cruzada sobre entrenamiento (<span class="id">docs/fase3/modelado.md</span>, tablas de diagnóstico condicional) · ● evaluación única en test (<span class="id">docs/fase4/lockbox.md</span>). Las celdas sin fuente publicada por tipo se dejan como <b>—</b>.</p>
+    </div>
+    <div class="mult" data-mult></div>
+    <div class="tw" style="margin-top:20px" data-mtable></div>
+    <p class="src" data-mtable-src></p>
+  </section>
+
+  <section class="panel" style="margin-bottom:24px">
+    <div class="ph">
+      <h2>Variables más importantes por edad (GPR)</h2>
+      <div class="r" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <span class="st watch"><i></i><b>Valores de ejemplo</b></span>
+        <div class="seg" data-imp-age role="group" aria-label="Edad para importancia de variables"></div>
+      </div>
+      <p>Top 5 de variables de calidad para el modelo campeón (<span class="id">GPR</span>) según la edad seleccionada. <b>Asociación descriptiva, no causa.</b></p>
+    </div>
+    <div class="imp" data-imp-bars></div>
+    <p class="src" data-imp-src></p>
+  </section>
+
+  <div class="two">
+    <section class="panel"><div class="ph"><h2>Error esperado a futuro</h2><p>El proceso de la planta cambia con el tiempo; el error crece fuera del periodo de entrenamiento.</p></div><div data-drift></div></section>
+    <section class="panel"><div class="ph"><h2>Confianza por tipo de producto</h2><p>Cobertura del intervalo al 90% en validación cruzada y en test, y soporte de datos.</p></div><div data-types-conf></div></section>
+  </div>
+</main>
+
+<!-- VALOR -->
+<main class="page" data-page="val">
+  <div class="head"><div><h1>Valor</h1><div class="sub">Cada MPa de precisión es margen de sobrediseño que la planta puede dejar de pagar.</div></div></div>
+  <div class="metaheader"><div><span>Escenario</span>Base (<span style="color:var(--caution);font-weight:600">Valores de ejemplo · por validar con GCC</span>)</div><div><span>Modelo</span><span class="id" style="display:inline;color:var(--ink)">datathon.gcc.gcc_strength_champion@champion</span> (MAE 28 d test: 280.8 psi)</div><div><span>Supuestos</span><span class="id" style="display:inline;color:var(--ink)">conf/roi.yaml</span> · por validar con GCC</div><div><span>Actualizado</span>03 nov 2026</div></div>
+  <div class="readout" data-vread style="margin-bottom:28px"></div>
+  <div class="two" style="margin-bottom:24px">
+    <section class="panel">
+      <div class="ph">
+        <h2>Desglose del ahorro en cuatro palancas</h2>
+        <div class="r"><span class="st watch"><i></i><b>Valores de ejemplo · por validar con GCC</b></span></div>
+        <p>Mecanismo y fórmula de cada palanca del modelo de negocio; todos los montos son supuestos.</p>
+      </div>
+      <div class="tw" data-levers-roi></div>
+      <p class="src">Fuente: modelo de negocio del proyecto y <span class="id">datathon.gcc.gold_roi_scenarios</span> · Montos: <b>Valores de ejemplo · por validar con GCC</b>.</p>
+    </section>
+    <section class="panel">
+      <div class="ph">
+        <h2>Por qué la física importa</h2>
+        <div class="r"><span class="st watch"><i></i><b>Interpretación probable</b></span></div>
+        <p>Tres hallazgos físico-químicos documentados en <span class="id">docs/fase0/variable_fingerprint.md</span> y <span class="id">docs/fase2/eda.md</span>.</p>
+      </div>
+      <div class="phys-list" data-phys-why></div>
+      <p class="src">Fuente: <span class="id">docs/fase0/variable_fingerprint.md</span> y <span class="id">docs/fase2/eda.md</span> · Toda identidad química lleva la marca <b>interpretación probable</b> hasta confirmación de GCC.</p>
+    </section>
+  </div>
+  <div class="two">
+    <section class="panel"><div class="ph"><h2>Qué supuestos mueven más el ahorro</h2><div class="r"><span class="st watch"><i></i><b>Valores de ejemplo · por validar con GCC</b></span></div><p>Variación del ahorro anual al llevar cada supuesto y cada una de las cuatro palancas de su valor bajo a su valor alto.</p></div><div data-torn></div><p class="src">Fuente: <span class="id">datathon.gcc.gold_roi_scenarios</span> · Monte Carlo de 10,000 corridas, semilla 42 · <b>Valores de ejemplo · por validar con GCC</b>.</p></section>
+    <section class="panel"><div class="ph"><h2>Valor de la precisión</h2><div class="r"><span class="st watch"><i></i><b>Valores de ejemplo · por validar con GCC</b></span></div><p>Ahorro anual estimado según el error del modelo a 28 días.</p></div><div data-vmae></div><p class="src"><b>Valores de ejemplo · por validar con GCC</b>; unidades (psi) sin confirmar.</p></section>
+  </div>
+</main>
+
+<!-- EVIDENCIA -->
+<main class="page" data-page="evi">
+  <div class="head"><div><h1>Evidencia</h1><div class="sub">La rúbrica calificada por el propio pipeline, la cobertura de §3.4 y el origen de cada dato.</div></div></div>
+  <div class="two" style="margin-bottom:24px">
+    <section class="panel"><div class="ph"><h2>Rúbrica</h2><p>Estado actual de cada criterio; en la app saldrá de <span class="id">rubric_scorecard</span>.</p></div><div class="tw" data-score></div></section>
+    <section class="panel"><div class="ph"><h2>Origen de los datos</h2><div class="r"><span class="st watch"><i></i><b>Valores de ejemplo</b></span></div><p>Tablas de Unity Catalog incluidas en la versión publicada.</p></div><div class="tw" data-lineage></div></section>
+  </div>
+  <section class="panel">
+    <div class="ph">
+      <h2>Cobertura de §3.4</h2>
+      <p>Seis vistas requeridas por el enunciado oficial (<span class="id">docs/README.md</span> §3.4) y la página donde se cumple cada una.</p>
+    </div>
+    <div class="tw" data-cov34></div>
+    <p class="src">Fuente: <span class="id">docs/README.md</span> (§3.4) y <span class="id">ADR 0010</span> · Haz clic en la página para abrir la vista correspondiente.</p>
+  </section>
+</main>
+<div class="tip" id="tip"></div>
+<script src="snapshot.js"></script>
+<script>
+const SNAP=window.SNAPSHOT;
+const AGES=[1,7,28], AGE_LBL=['R1','R7','R28'], AGE_NAME=['1 día','7 días','28 días'], PSI_PER_MPA=145.038;
+const fmt=v=>Math.round(v).toLocaleString('es-MX');
+const mpa=v=>(v/PSI_PER_MPA).toFixed(1);
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerpA=(a,b,e)=>a.map((x,i)=>x+(b[i]-x)*e);
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+/* ---------- Variables e hipótesis de identidad según docs/fase0/variable_fingerprint.md ----------
+   Nota: Mineral_Phase_A (silicatos totales = B + C, confianza alta) es colineal con B y C.
+   El modelo real asigna efecto negativo a finura y C3S en R28 por la deriva histórica (no es física);
+   la interfaz lo señala con una marca y una nota. */
+const VARS=[
+  {k:'PMB',name:'Finura Blaine',code:'Physical_Metric_B',conf:'media–alta',lowConf:false,g:'Física',ctrl:true,uOrig:'z-score',step:0.05,dec:2},
+  {k:'PMA',name:'Segunda medida de finura',code:'Physical_Metric_A',conf:'baja',lowConf:true,g:'Física',na:true,uOrig:'[0, 1]',step:0.01,dec:3},
+  {k:'MPC',name:'C₃S · alita',code:'Mineral_Phase_C',conf:'media–alta',lowConf:false,g:'Mineralogía',uOrig:'[0, 1]',step:0.01,dec:3},
+  {k:'MPB',name:'C₂S · belita',code:'Mineral_Phase_B',conf:'media–alta',lowConf:false,g:'Mineralogía',uOrig:'[0, 1]',step:0.01,dec:3},
+  {k:'MPD',name:'Calcita / caliza',code:'Mineral_Phase_D',conf:'alta–media',lowConf:false,g:'Mineralogía',ctrl:true,uOrig:'[0, 1]',step:0.01,dec:3},
+  {k:'MPF',name:'C₃A',code:'Mineral_Phase_F',conf:'baja–media',lowConf:true,g:'Mineralogía',uOrig:'[0, 1]',step:0.01,dec:3},
+  {k:'MPE',name:'C₄AF · ferrita',code:'Mineral_Phase_E',conf:'baja–media',lowConf:true,g:'Mineralogía',uOrig:'[0, 1]',step:0.01,dec:3},
+  {k:'MPG',name:'Cal libre',code:'Mineral_Phase_G',conf:'baja–media',lowConf:true,g:'Mineralogía',uOrig:'[0, 1]',step:0.002,dec:3},
+  {k:'MPH',name:'Fase de sulfato',code:'Mineral_Phase_H',conf:'baja',lowConf:true,g:'Mineralogía',uOrig:'[0, 1]',step:0.01,dec:3},
+  {k:'CCA',name:'SO₃',code:'Chemical_Composition_A',conf:'media',lowConf:false,g:'Química',ctrl:true,uOrig:'[0, 1]',step:0.01,dec:3},
+  {k:'CCB',name:'Indicador menor (RI / álcalis / MgO)',code:'Chemical_Composition_B',conf:'baja',lowConf:true,g:'Química',uOrig:'[0, 1]',step:0.005,dec:3}
+];
+const GRID=SNAP.grid;
+function interp(x,xs,ys){
+  if(x<=xs[0]) return ys[0];
+  if(x>=xs[xs.length-1]) return ys[ys.length-1];
+  for(let i=0;i<xs.length-1;i++){ if(x<=xs[i+1]){ const u=(x-xs[i])/Math.max(1e-9,xs[i+1]-xs[i]); return ys[i]+u*(ys[i+1]-ys[i]); } }
+  return ys[ys.length-1];
+}
+function pctToRaw(k,p){ return interp(p,GRID,SNAP.values[k]); }
+function rawToPct(k,raw){
+  const vs=SNAP.values[k];
+  if(raw<vs[0]) return 0;
+  if(raw>vs[vs.length-1]) return 100;
+  return Math.round(interp(raw,vs,GRID));
+}
+function fmtRaw(k,p){
+  const v=VARS.find(x=>x.k===k);
+  return pctToRaw(k,p).toFixed(v.dec);
+}
+
+/* ---------- Tipos de producto según docs/fase0/variable_fingerprint.md ----------
+   Type 3 corregido: mediana R28 = 7900 psi (antes 7920). */
+const TYPES={
+  'Type 1':{lab:'probable IL · caliza',conf:'alta–media',base:[2240,5980,7470],f:1,meta:7000,ok:true},
+  'Type 2':{lab:'probable Tipo III · baja confianza',conf:'alta–media (subcobertura CV)',base:[3670,7610,8540],f:1.5,meta:8000,ok:true,note:'Banda con subcobertura en CV (≈80–83% frente a 90% nominal).'},
+  'Type 3':{lab:'probable C150 no-III',conf:'media',base:[2230,5975,7900],f:1.2,meta:7400,ok:true},
+  'Type 4':{lab:'probable albañilería C91',conf:'media',base:[1300,2955,3485],f:3,meta:2900,ok:false,note:'4 filas en train y ninguna con R1: el modelo no es confiable para este tipo.'},
+  'Type 5':{lab:'probable Tipo IP · baja confianza',conf:'baja',base:[1710,4240,5580],f:4,meta:5000,ok:false,note:'1 fila en train: el modelo no es confiable para este tipo.'}
+};
+const TARGETS=['Strength1','Strength7','Strength28'];
+Object.entries(SNAP.types).forEach(([name,spec])=>{TYPES[name].base=spec.base;TYPES[name].meta=spec.meta});
+const NONPHYS=new Set(['PMB','MPC']);
+const envOf=(t,k)=>{const e=SNAP.types[t]&&SNAP.types[t].envelope[k];return e?[Math.ceil(e[0]),Math.floor(e[1])]:[0,100]};
+const outside=s=>VARS.filter(v=>!(v.k==='PMA'&&s.pmaNA)).filter(v=>{const[x,y]=envOf(s.type,v.k);return s.p[v.k]<x||s.p[v.k]>y});
+const startOf=t=>Object.fromEntries(VARS.map(v=>[v.k,Math.round((SNAP.types[t].start||{})[v.k]??50)]));
+const so3Optimum=t=>{const d=SNAP.types[t].deltas.CCA[2];return GRID[d.indexOf(Math.max(...d))]};
+const LEVERS=[
+  {k:'PMB',n:'Finura Blaine',dir:1,why:'Moler más fino acelera la hidratación'},
+  {k:'MPD',n:'Calcita / caliza',dir:-1,why:'Menos diluyente, más clínker'},
+  {k:'CCA',n:'SO₃',dir:0,why:'Acercar al óptimo de sulfatos'}
+];
+
+/* P(no cumplir): distribución empírica de residuos con signo OOF de train a 28 días. */
+const CALIBRATION_MAX=0.05;
+function probFailFromResiduals(v28,meta){
+  const q=SNAP.residual_quantiles.Strength28,l=SNAP.residual_levels,target=meta-v28;
+  if(target<=q[0]) return 0;
+  if(target>=q[q.length-1]) return 1;
+  return interp(target,q,l);
+}
+
+function pav(v){ // proyección isotónica R1 ≤ R7 ≤ R28 (pool adjacent violators)
+  let b=v.map(x=>({s:x,n:1}));
+  for(let i=0;i<b.length-1;){ if(b[i].s/b[i].n>b[i+1].s/b[i+1].n){b[i]={s:b[i].s+b[i+1].s,n:b[i].n+b[i+1].n};b.splice(i+1,1);i=Math.max(0,i-1);} else i++; }
+  return b.flatMap(x=>Array(x.n).fill(x.s/x.n));
+}
+
+function predict(s){
+  const T=TYPES[s.type],spec=SNAP.types[s.type],contrib=[[],[],[]];
+  if(!spec) return {raw:T.base,v:T.base,lo:T.base,hi:T.base,hw:[0,0,0],contrib,T};
+  const raw=spec.base.slice();
+  VARS.forEach(V=>{
+    for(let j=0;j<3;j++){
+      const c=(V.k==='PMA'&&s.pmaNA)?0:interp(s.p[V.k],GRID,spec.deltas[V.k][j]);
+      raw[j]+=c; contrib[j].push({k:V.k,name:V.name,c});
+    }
+  });
+  const v=pav(raw),hw=TARGETS.map(t=>SNAP.half_width[t][s.type]);
+  return {raw,v,lo:v.map((x,j)=>x-hw[j]),hi:v.map((x,j)=>x+hw[j]),hw,contrib,T};
+}
+
+function predictA(s){
+  const P=predict(s);
+  P.out=outside(s);P.type=s.type; // la banda NO se ensancha fuera de la región con datos
+  return P;
+}
+
+/* ---------- Regla única del veredicto y P(no cumplir) ----------
+   v = predicción a 28 d, L = límite inferior a 28 d, meta:
+   - ok   si L >= meta
+   - warn si v >= meta > L
+   - bad  si v < meta
+   Fuera de la región (P.out.length > 0): no se estima P(no cumplir) (pr = null). */
+function risk(P){
+  const v=P.v[2],L=P.lo[2],meta=P.T.meta;
+  const lvl=L>=meta?'ok':v>=meta?'warn':'bad';
+  const out=P.out&&P.out.length>0;
+  const calibrated=(SNAP.calibration_max_deviation[P.type]??1)<=CALIBRATION_MAX;
+  const pr=out||!calibrated?null:probFailFromResiduals(v,meta);
+  return {pr,lvl,out,calibrated};
+}
+
+function inverseA(s){
+  const P=predictA(s),meta=P.T.meta;
+  if(P.lo[2]>=meta) return {ok:true,margin:P.lo[2]-meta};
+  const rows=LEVERS.map(L=>{
+    const cur=s.p[L.k],[x,y]=envOf(s.type,L.k);
+    let dir=L.dir; if(!dir) dir=cur<so3Optimum(s.type)?1:-1;
+    const at=v=>predictA({...s,p:{...s.p,[L.k]:v}}).lo[2];
+    if(at(clamp(cur+dir*10,x,y))<=P.lo[2]) return {...L,kind:'contra',cur};
+    for(let k=1;k<=100;k++){
+      const np=cur+dir*k; if(np<x||np>y) break;
+      if(at(np)>=meta) return {...L,kind:'ok',cur,to:np};
+    }
+    return {...L,kind:'insuf',cur};
+  });
+  return {ok:false,gap:meta-P.lo[2],rows};
+}
+
+const LV={ok:['ok','Cumple'],warn:['watch','En vigilancia'],bad:['off','Bajo meta']};
+const stTag=(lvl,txt)=>`<span class="st ${lvl}"><i></i>${txt}</span>`;
+
+/* ---------- utilidades SVG / tooltip ---------- */
+const NS='http://www.w3.org/2000/svg';
+function el(tag,attrs={},parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
+const tip=document.getElementById('tip');
+function showTip(html,ev){tip.innerHTML=html;tip.style.display='block';const x=Math.min(ev.clientX+14,innerWidth-tip.offsetWidth-8);tip.style.left=Math.max(8,x)+'px';tip.style.top=(ev.clientY+14)+'px'}
+function hideTip(){tip.style.display='none'}
+function measureW(host,fallback=640){
+  const w=host?Math.floor(host.clientWidth||host.getBoundingClientRect().width||0):0;
+  return w>120?w:Math.max(250,Math.min(fallback,(window.innerWidth||1024)-64));
+}
+
+/* monotone cubic (Fritsch–Carlson) */
+function mono(xs,ys){const n=xs.length,d=[],m=[];for(let i=0;i<n-1;i++)d.push((ys[i+1]-ys[i])/(xs[i+1]-xs[i]));
+  m[0]=d[0];m[n-1]=d[n-2];for(let i=1;i<n-1;i++)m[i]=d[i-1]*d[i]<=0?0:(d[i-1]+d[i])/2;
+  for(let i=0;i<n-1;i++){if(d[i]===0){m[i]=m[i+1]=0;continue}const a=m[i]/d[i],b=m[i+1]/d[i],h=a*a+b*b;if(h>9){const t=3/Math.sqrt(h);m[i]=t*a*d[i];m[i+1]=t*b*d[i]}}
+  return x=>{let i=Math.min(n-2,Math.max(0,xs.findIndex((v,k)=>k<n-1&&x<=xs[k+1])));const h=xs[i+1]-xs[i],t=(x-xs[i])/h,t2=t*t,t3=t2*t;
+    return (2*t3-3*t2+1)*ys[i]+(t3-2*t2+t)*h*m[i]+(-2*t3+3*t2)*ys[i+1]+(t3-t2)*h*m[i+1]}}
+
+/* ---------- lectura (readout) ---------- */
+function readout(host,items){host.innerHTML=items.map(x=>`<div class="ro"><div class="age">${x.c?`<i style="background:${x.c}"></i>`:''}${x.l}</div><div class="num">${x.v}<small>${x.u||''}</small></div><div class="rng">${x.r||''}</div></div>`).join('')}
+
+/* ---------- Curva 0–28 días con banda (en píxeles reales, medida con ResizeObserver) ---------- */
+function drawCurveA(host,P){
+  if(!host||!P) return;
+  host.innerHTML='';
+  const W=measureW(host,740),compact=W<420;
+  const H=compact?260:310,L=compact?46:54,R=compact?14:22,T=28,B=44;
+  const svg=el('svg',{width:String(W),height:String(H),role:'img','aria-label':`Resistencia esperada: 1 día ${fmt(P.v[0])}, 7 días ${fmt(P.v[1])}, 28 días ${fmt(P.v[2])} psi`},host);
+  const meta=P.T.meta,r=risk(P),isBad=r.lvl==='bad',isWarn=r.lvl==='warn',isOut=P.out&&P.out.length>0;
+  const ymax=Math.ceil(Math.max(P.hi[2],meta)*1.06/2000)*2000;
+  const X=t=>L+Math.sqrt(t/28)*(W-L-R),Y=v=>T+(1-v/ymax)*(H-T-B);
+  const yStep=compact&&ymax>8000?4000:2000;
+  for(let v=0;v<=ymax;v+=yStep){
+    el('line',{x1:L,x2:W-R,y1:Y(v),y2:Y(v),stroke:v?'var(--rule-2)':'var(--ink)'},svg);
+    el('text',{x:L-8,y:Y(v)+4,'text-anchor':'end',class:'tick'},svg).textContent=fmt(v);
+  }
+  el('text',{x:L-8,y:T-12,'text-anchor':'end',class:'tick'},svg).textContent='psi';
+  const xTicks=compact?[0,1,7,14,28]:[0,1,3,7,14,21,28];
+  xTicks.forEach(t=>{el('text',{x:X(t),y:H-B+18,'text-anchor':'middle',class:'tick'},svg).textContent=t});
+  el('text',{x:(L+W-R)/2,y:H-4,'text-anchor':'middle',class:'tick'},svg).textContent=compact?'días de curado (√t)':'días de curado (escala de raíz)';
+
+  const us=[0,1,Math.sqrt(7),Math.sqrt(28)],fC=mono(us,[0,...P.v]),fL=mono(us,[0,...P.lo.map(x=>Math.max(0,x))]),fH=mono(us,[0,...P.hi]);
+  const N=80,c=[],lo=[],hi=[];
+  for(let i=0;i<=N;i++){const u=Math.sqrt(28)*i/N,t=u*u;c.push([X(t),Y(fC(u))]);lo.push([X(t),Y(Math.max(0,fL(u)))]);hi.push([X(t),Y(fH(u))])}
+  const bandAttrs={d:'M'+hi.join('L')+'L'+lo.slice().reverse().join('L')+'Z',fill:'var(--interval)'};
+  if(isOut){
+    bandAttrs.stroke='var(--caution)';
+    bandAttrs['stroke-width']='1.5';
+    bandAttrs['stroke-dasharray']='5 3';
+  }
+  el('path',bandAttrs,svg);
+
+  if(isOut){
+    const uMid=Math.sqrt(14),yMid=Y(fH(uMid))-6;
+    el('text',{
+      x:X(14),y:Math.max(T+12,yMid),'text-anchor':'middle',class:'lbl',
+      style:'fill:var(--caution);font-weight:600',stroke:'var(--surface)','stroke-width':3,'paint-order':'stroke'
+    },svg).textContent='Cobertura no validada';
+  }
+
+  const metaStroke=isBad?'var(--off)':isWarn?'var(--caution)':'var(--ink-2)';
+  const metaFill=isBad?'var(--off-ink)':isWarn?'var(--caution)':'var(--ink-2)';
+  el('line',{x1:L,x2:W-R,y1:Y(meta),y2:Y(meta),stroke:metaStroke,'stroke-dasharray':'5 4','stroke-width':1.5},svg);
+  el('text',{
+    x:L+6,y:Math.max(T+12,Y(meta)-6),class:'lbl',
+    style:`fill:${metaFill}`,stroke:'var(--surface)','stroke-width':3,'paint-order':'stroke'
+  },svg).textContent=compact?`Meta · ${fmt(meta)} psi`:`Meta 28 días · ${fmt(meta)} psi (supuesto)`;
+
+  el('path',{d:'M'+c.join('L'),fill:'none',stroke:'var(--ink)','stroke-width':2},svg);
+  [1,7,28].forEach((t,j)=>{
+    el('line',{x1:X(t),x2:X(t),y1:Y(Math.max(0,P.lo[j])),y2:Y(P.hi[j]),stroke:`var(--age${j+1})`,'stroke-width':3},svg);
+    el('rect',{x:X(t)-5,y:Y(P.v[j])-5,width:10,height:10,fill:`var(--age${j+1})`,stroke:'#fff','stroke-width':2},svg);
+  });
+
+  const leg=$('[data-curve-legend]');
+  if(leg){
+    leg.innerHTML=`<span><i style="width:16px;height:2px;background:var(--ink)"></i>Esperada</span>`+
+      `<span><i style="width:14px;height:10px;background:var(--interval);${isOut?'border:1.5px dashed var(--caution)':''}"></i>${isOut?'Intervalo 90% (cobertura no validada)':'Intervalo 90%'}</span>`+
+      `<span><i style="width:16px;border-top:1.5px dashed ${metaStroke}"></i>Meta 28 días</span>`;
+  }
+
+  const cross=el('line',{y1:T,y2:H-B,stroke:'var(--ink-3)',visibility:'hidden'},svg),dot=el('circle',{r:4,fill:'var(--ink)',visibility:'hidden'},svg);
+  const hit=el('rect',{x:L,y:T,width:W-L-R,height:H-T-B,fill:'transparent'},svg);
+  hit.addEventListener('mousemove',ev=>{
+    const rect=svg.getBoundingClientRect(),u=Math.sqrt(28)*clamp(((ev.clientX-rect.left)-L)/(W-L-R),0,1),t=u*u,v=fC(u);
+    cross.setAttribute('x1',X(t));cross.setAttribute('x2',X(t));cross.setAttribute('visibility','visible');
+    dot.setAttribute('cx',X(t));dot.setAttribute('cy',Y(v));dot.setAttribute('visibility','visible');
+    showTip(`Día ${t<1?t.toFixed(2):t.toFixed(1)}${AGES.some(a=>Math.abs(a-t)<.3)?'':' · interpolación'}<br><b>${fmt(v)} psi</b> · ${mpa(v)} MPa<br>Intervalo 90%: ${fmt(Math.max(0,fL(u)))}–${fmt(fH(u))}${isOut?'<br><span style="color:#F5C878">Cobertura no validada</span>':''}`,ev);
+  });
+  hit.addEventListener('mouseleave',()=>{cross.setAttribute('visibility','hidden');dot.setAttribute('visibility','hidden');hideTip()});
+}
+
+/* ---------- simulador ---------- */
+const S={type:'Type 1',pmaNA:true,p:startOf('Type 1')};
+let ageJ=2,shown=null,morph=0,DEF=null;
+const setLotId=id=>{$('[data-lotid]').textContent=id?id:'escenario modificado'};
+
+$('[data-types]').innerHTML=['Type 1','Type 2','Type 3'].map(t=>`<button data-type="${t}" aria-pressed="${t==='Type 1'}">${t}<small>${TYPES[t].lab}</small></button>`).join('');
+$$('[data-type]').forEach(b=>b.addEventListener('click',()=>{S.type=b.dataset.type;const st=startOf(S.type);VARS.forEach(v=>setP(v.k,st[v.k]));setLotId(null);update()}));
+
+$('[data-vars]').innerHTML=[...new Set(VARS.map(v=>v.g))].map(g=>`<div class="grp">${g}</div>`+VARS.filter(v=>v.g===g).map(v=>`<div class="var" data-k="${v.k}">`+
+  `<div class="top"><label for="r-${v.k}">${v.name}</label>${v.lowConf?`<span class="conf-low">· confianza ${v.conf}</span>`:''}${v.ctrl?'<span class="lev">palanca</span>':''}<output></output></div>`+
+  `<div class="code">${v.code} · unidad original (${v.uOrig}) · interpretación (${v.conf})</div>`+
+  `<div class="ctrl-row">`+
+    `<input type="range" id="r-${v.k}" min="0" max="100" value="50" aria-label="${v.name} (${v.code})" aria-valuetext="${v.name}: percentil 50" aria-describedby="e-${v.k}">`+
+    `<input type="number" id="n-${v.k}" step="${v.step}" value="${fmtRaw(v.k,50)}" aria-label="${v.name} en escala original (${v.uOrig})" aria-describedby="e-${v.k}">`+
+    `<span class="u-orig">${v.uOrig}</span>`+
+  `</div>`+
+  `<div class="env" id="e-${v.k}"></div>`+
+  `${v.na?'<label class="na"><input type="checkbox" checked data-na> Sin medición: el instrumento falta en 75% del histórico</label>':''}`+
+  `</div>`).join('')).join('');
+
+$$('[data-vars] input[type=range]').forEach(i=>i.addEventListener('input',()=>{
+  const k=i.closest('.var').dataset.k;
+  S.p[k]=+i.value;
+  const num=$('#n-'+k);
+  if(num) num.value=fmtRaw(k,S.p[k]);
+  setLotId(null);
+  update();
+}));
+$$('[data-vars] input[type=number]').forEach(n=>n.addEventListener('input',()=>{
+  const k=n.closest('.var').dataset.k,raw=parseFloat(n.value);
+  if(Number.isNaN(raw)) return;
+  const p=rawToPct(k,raw);
+  S.p[k]=p;
+  const rngEl=$('#r-'+k);
+  if(rngEl) rngEl.value=clamp(p,0,100);
+  setLotId(null);
+  update();
+}));
+$('[data-na]').addEventListener('change',e=>{S.pmaNA=e.target.checked;setLotId(null);update()});
+$('[data-ages]').innerHTML=AGE_NAME.map((a,j)=>`<button data-age="${j}" aria-pressed="${j===2}">${a}</button>`).join('');
+$$('[data-age]').forEach(b=>b.addEventListener('click',()=>{ageJ=+b.dataset.age;$$('[data-age]').forEach(x=>x.setAttribute('aria-pressed',x===b));drawContrib(predictA(S))}));
+$('[data-reset]').addEventListener('click',()=>loadLot(DEF));
+
+function setP(k,v){
+  S.p[k]=v;
+  const rEl=$('#r-'+k),nEl=$('#n-'+k);
+  if(rEl) rEl.value=clamp(v,0,100);
+  if(nEl) nEl.value=fmtRaw(k,v);
+}
+function loadLot(l){
+  if(!l) return;
+  S.type=l.type; S.pmaNA=l.pmaNA!==undefined?l.pmaNA:true;
+  $('[data-na]').checked=S.pmaNA;
+  VARS.forEach(v=>setP(v.k,l.p[v.k]));
+  setLotId(l.id);
+  update();
+}
+
+function drawContrib(P){
+  const items=P.contrib[ageJ].slice().sort((a,b)=>Math.abs(b.c)-Math.abs(a.c)).slice(0,8),mx=Math.max(80,...items.map(x=>Math.abs(x.c)));
+  const flagged=ageJ===2&&items.some(x=>NONPHYS.has(x.k));
+  $('[data-contrib]').innerHTML=items.map(x=>{const w=Math.abs(x.c)/mx*50,f=ageJ===2&&NONPHYS.has(x.k);
+    return `<div class="row"><span>${x.name}${f?' <span class="flag" title="Signo contrario a la química">*</span>':''}</span><span class="bar"><i style="left:${x.c>=0?50:50-w}%;width:${Math.max(w,.4)}%;background:${x.c>=0?'var(--action)':'var(--muted-mark)'}"></i></span><span class="v">${x.c>=0?'+':'−'}${fmt(Math.abs(x.c))}</span></div>`}).join('')+
+    `<p class="src">Respecto a la predicción con las medianas de ${S.type} a ${AGE_NAME[ageJ]}: ${fmt(P.T.base[ageJ])} psi. Describe al modelo, no causas.</p>`+
+    (flagged?`<p class="src" style="color:var(--caution)">* A 28 días el modelo asocia más finura y más C₃S con menor resistencia. Es un efecto de la deriva histórica de la planta, no de la química: no lo uses para decidir la molienda ni la dosificación.</p>`:'');
+}
+
+function paint(P){
+  drawCurveA($('[data-curve]'),P);
+  const isOut=P.out&&P.out.length>0;
+  readout($('[data-readout]'),P.v.map((v,j)=>({
+    c:`var(--age${j+1})`,l:AGE_NAME[j],v:fmt(v),u:'psi',
+    r:`${fmt(Math.max(0,P.lo[j]))}–${fmt(P.hi[j])} al 90%${isOut?' (cobertura no validada)':''} · ${mpa(v)} MPa`
+  })));
+}
+
+function update(){
+  const P=predictA(S);
+  $$('[data-type]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.type===S.type));
+  $$('[data-vars] .var').forEach(d=>{
+    const k=d.dataset.k,vObj=VARS.find(v=>v.k===k),i=d.querySelector('input[type=range]'),n=d.querySelector('input[type=number]'),[x,y]=envOf(S.type,k),na=k==='PMA'&&S.pmaNA,out=!na&&(S.p[k]<x||S.p[k]>y);
+    const pTxt=S.p[k]<0?'<p0':S.p[k]>100?'>p100':'p'+S.p[k];
+    d.querySelector('output').textContent=na?'—':`${pTxt} · ${fmtRaw(k,S.p[k])}`;
+    const clampedP=clamp(S.p[k],0,100);
+    i.style.setProperty('--p',clampedP+'%');
+    i.disabled=na;
+    if(document.activeElement!==i) i.value=clampedP;
+    if(n){
+      n.disabled=na;
+      n.classList.toggle('out',out);
+      if(document.activeElement!==n) n.value=na?'':fmtRaw(k,S.p[k]);
+    }
+    i.setAttribute('aria-label',`${vObj.name} (${vObj.code})`);
+    i.setAttribute('aria-valuetext',na?`${vObj.name}: sin medición`:`${vObj.name}: percentil ${S.p[k]} (${fmtRaw(k,S.p[k])} ${vObj.uOrig})`);
+    const e=d.querySelector('.env');
+    e.textContent=out
+      ?`Fuera de la región con datos de ${S.type} (p${x}–p${y} · ${fmtRaw(k,x)} a ${fmtRaw(k,y)} ${vObj.uOrig})`
+      :`Región con datos de ${S.type}: p${x}–p${y} (${fmtRaw(k,x)} a ${fmtRaw(k,y)} ${vObj.uOrig})`;
+    e.classList.toggle('out',out);
+  });
+  const from=shown||P,t0=performance.now(),D=REDUCE?0:160;cancelAnimationFrame(morph);
+  const st=now=>{const a=D?Math.min(1,(now-t0)/D):1,e=1-(1-a)**2,I={...P,v:lerpA(from.v,P.v,e),lo:lerpA(from.lo,P.lo,e),hi:lerpA(from.hi,P.hi,e)};shown=I;paint(I);if(a<1)morph=requestAnimationFrame(st)};
+  morph=requestAnimationFrame(st);
+
+  const r=risk(P),meta=P.T.meta,m=P.lo[2]-meta,vd=$('[data-verdict]'),isOut=P.out.length>0;
+  // Fuera de la región: estado ámbar (watch), no rojo, salvo que además aplique bad (v < meta)
+  const vClass=r.lvl==='bad'?' off':(r.lvl==='warn'||isOut)?' watch':'';
+  vd.className='verdict'+vClass;
+  const title=r.lvl==='ok'
+    ?'Cumple: el límite inferior a 28 días queda sobre la meta'
+    :r.lvl==='warn'
+      ?'En vigilancia: el límite inferior queda bajo la meta'
+      :'Bajo meta: la predicción a 28 días queda bajo la meta';
+  const pBlock=isOut
+    ?`<div class="p"><b>—</b><span>No se estima fuera de la región con datos</span></div>`
+    :r.pr===null?`<div class="p"><b>—</b><span>Sin porcentaje: la estimación no pasó la calibración en ${S.type}</span></div>`:`<div class="p"><b>${(r.pr*100).toFixed(1)}%</b><span>probabilidad estimada de no cumplir</span></div>`;
+  vd.innerHTML=`<div><div class="t">${title}</div><div class="d">Predicción a 28 días ${fmt(P.v[2])} psi · límite inferior ${fmt(P.lo[2])} psi · meta interna ${fmt(meta)} psi (supuesto) · ${m>=0?'margen':'faltan'} ${fmt(Math.abs(m))} psi${S.type==='Type 2'?' · Type 2: intervalos menos confiables (cubrieron 80–83% en validación)':''}${isOut?' · Cobertura no validada fuera de la región con datos':''}</div></div>${pBlock}`;
+
+  const ew=$('[data-envwarn]');
+  ew.classList.toggle('show',isOut);
+  $('[data-envwarntext]').textContent=isOut?`Fuera de la región con datos de ${S.type}: ${P.out.map(v=>v.name).join(', ')}. La predicción es una extrapolación: la banda mantiene su ancho con cobertura no validada y no se estima la probabilidad de no cumplir.`:'';
+
+  const inv=inverseA(S),ib=$('[data-inv]');
+  if(inv.ok){
+    ib.innerHTML=`<p style="margin:0;font-size:14px">No hace falta ningún cambio.</p><p class="src">El límite inferior supera la meta por ${fmt(inv.margin)} psi. Ese margen es sobrediseño que se podría liberar (ver Valor).</p>`;
+  }else{
+    ib.innerHTML=`<table class="t"><thead><tr><th>Palanca</th><th class="n">Actual</th><th class="n">Propuesto</th><th></th></tr></thead><tbody>${inv.rows.map(r=>r.kind==='ok'
+      ?`<tr><td>${r.n}<div class="xs ink3">${r.why}</div></td><td class="n">p${r.cur} <span class="xs ink3">(${fmtRaw(r.k,r.cur)})</span></td><td class="n"><b>p${r.to}</b> <span class="xs ink3">(${fmtRaw(r.k,r.to)})</span></td><td class="n"><button class="btn" data-apply="${r.k}:${r.to}">Aplicar</button></td></tr>`
+      :`<tr><td>${r.n}<div class="xs" style="color:${r.kind==='contra'?'var(--caution)':'var(--ink-3)'}">${r.kind==='contra'?'Sin recomendación: el modelo asocia esta dirección con menor resistencia por la deriva histórica, no por la química.':'No alcanza la meta dentro de la región con datos.'}</div></td><td class="n">p${r.cur} <span class="xs ink3">(${fmtRaw(r.k,r.cur)})</span></td><td class="n ink3">—</td><td></td></tr>`).join('')}</tbody></table>
+      <p class="src">Faltan ${fmt(inv.gap)} psi en el límite inferior. Solo se proponen cambios en la dirección físicamente correcta y dentro de la región con datos de ${S.type}.</p>`;
+    $$('[data-apply]').forEach(b=>b.addEventListener('click',()=>{const[k,v]=b.dataset.apply.split(':');setP(k,+v);setLotId(null);update()}));
+  }
+  drawContrib(P);
+}
+
+/* ---------- Filtro compartido por ProductType (Resistencias, Lotes y Modelos) ---------- */
+const PT_OPTS=[['all','Todos'],['Type 1','Type 1'],['Type 2','Type 2'],['Type 3','Type 3']];
+let sharedType='all';
+function renderSharedTypeFilters(){
+  $$('[data-pt-filter]').forEach(host=>{
+    host.innerHTML=PT_OPTS.map(([k,n])=>`<button data-pt="${k}" aria-pressed="${k===sharedType}">${n}</button>`).join('');
+    host.querySelectorAll('[data-pt]').forEach(b=>b.addEventListener('click',()=>setSharedType(b.dataset.pt)));
+  });
+}
+function setSharedType(pt){
+  sharedType=pt;
+  $$('[data-pt-filter] [data-pt]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.pt===sharedType));
+  drawResPage();
+  drawLots();
+  renderHistTable();
+  drawMult();
+  renderModTables();
+  drawImpBars();
+}
+
+/* ---------- Página Resistencias (#res): distribuciones y densidades con semilla 42 ---------- */
+let qualVarK='PMB',qualAgeJ=0;
+const qvSel=$('[data-qual-var]');
+if(qvSel){
+  qvSel.innerHTML=VARS.map(v=>`<option value="${v.k}">${v.name} (${v.code} · ${v.uOrig})</option>`).join('');
+  qvSel.addEventListener('change',()=>{qualVarK=qvSel.value;drawHexQuality()});
+}
+const qaHost=$('[data-qual-age]');
+if(qaHost){
+  qaHost.innerHTML=AGE_NAME.map((a,j)=>`<button data-qa="${j}" aria-pressed="${j===0}">${a}</button>`).join('');
+  qaHost.querySelectorAll('[data-qa]').forEach(b=>b.addEventListener('click',()=>{
+    qualAgeJ=+b.dataset.qa;
+    qaHost.querySelectorAll('[data-qa]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+    drawHexQuality();
+  }));
+}
+
+const HEX_RAMP=['#DCE6FA','#8FB0EE','#497BE0','#004CD7','#011288'];
+const scopeKey=()=>sharedType==='all'?'Todos':sharedType;
+function noData(host,msg){const p=document.createElement('p');p.className='src';p.textContent=msg;host.appendChild(p)}
+
+function drawResHist(){
+  const host=$('[data-res-hist]');
+  if(!host) return;
+  host.innerHTML='';
+  const colors=['var(--age1)','var(--age2)','var(--age3)'];
+  TARGETS.forEach((target,j)=>{
+    const box=document.createElement('div');
+    box.style.minWidth='0';
+    host.appendChild(box);
+    const d=SNAP.distributions[scopeKey()][target];
+    const W=measureW(box,340),H=196,L=36,Rr=12,T=26,B=38;
+    const xmin=d.edges[0],xmax=d.edges[d.edges.length-1],ymax=Math.max(5,Math.ceil(Math.max(...d.counts)*1.1));
+    const X=v=>L+(v-xmin)/Math.max(1,xmax-xmin)*(W-L-Rr),Y=c=>T+(1-c/ymax)*(H-T-B);
+    const svg=el('svg',{width:String(W),height:String(H),role:'img','aria-label':`Distribución a ${AGE_NAME[j]}, ${scopeKey()}`},box);
+    el('text',{x:0,y:14,class:'val'},svg).textContent=`${AGE_NAME[j]} · n=${d.n}`;
+    [0,Math.round(ymax/2),ymax].forEach(c=>{
+      el('line',{x1:L,x2:W-Rr,y1:Y(c),y2:Y(c),stroke:c?'var(--rule-2)':'var(--ink)'},svg);
+      el('text',{x:L-6,y:Y(c)+4,'text-anchor':'end',class:'tick'},svg).textContent=c;
+    });
+    d.counts.forEach((c,i)=>{
+      if(!c) return;
+      const x0=d.edges[i],x1=d.edges[i+1];
+      const r=el('rect',{x:X(x0)+1,y:Y(c),width:Math.max(2,X(x1)-X(x0)-2),height:H-B-Y(c),fill:colors[j]},svg);
+      r.addEventListener('mousemove',ev=>showTip(`${AGE_NAME[j]} · ${fmt(x0)}–${fmt(x1)} psi<br><b>${c} registros</b>`,ev));
+      r.addEventListener('mouseleave',hideTip);
+    });
+    [xmin,(xmin+xmax)/2,xmax].forEach((v,i)=>{
+      el('text',{x:X(v),y:H-B+16,'text-anchor':i===0?'start':i===2?'end':'middle',class:'tick'},svg).textContent=fmt(v);
+    });
+    el('text',{x:(L+W-Rr)/2,y:H-4,'text-anchor':'middle',class:'tick'},svg).textContent='resistencia (psi)';
+  });
+}
+
+function drawDensity(box,d,o){
+  const W=measureW(box,o.fallback||340),H=o.H||240,L=46,Rr=14,T=o.title?26:12,B=40;
+  const same=o.identity;
+  const xd=same?[Math.min(d.x[0],d.y[0]),Math.max(d.x[d.x.length-1],d.y[d.y.length-1])]:[d.x[0],d.x[d.x.length-1]];
+  const yd=same?xd:[d.y[0],d.y[d.y.length-1]];
+  const X=v=>L+(v-xd[0])/Math.max(1e-9,xd[1]-xd[0])*(W-L-Rr),Y=v=>T+(1-(v-yd[0])/Math.max(1e-9,yd[1]-yd[0]))*(H-T-B);
+  const svg=el('svg',{width:String(W),height:String(H),role:'img','aria-label':o.aria},box);
+  if(o.title) el('text',{x:0,y:14,class:'val'},svg).textContent=o.title;
+  const yt=[yd[0],(yd[0]+yd[1])/2,yd[1]],xt=[xd[0],(xd[0]+xd[1])/2,xd[1]];
+  yt.forEach((v,i)=>{
+    el('line',{x1:L,x2:W-Rr,y1:Y(v),y2:Y(v),stroke:i?'var(--rule-2)':'var(--ink)'},svg);
+    el('text',{x:L-6,y:Y(v)+4,'text-anchor':'end',class:'tick'},svg).textContent=fmt(v);
+  });
+  xt.forEach((v,i)=>{
+    el('text',{x:X(v),y:H-B+16,'text-anchor':i===0?'start':i===2?'end':'middle',class:'tick'},svg).textContent=o.fx?o.fx(v):fmt(v);
+  });
+  el('text',{x:(L+W-Rr)/2,y:H-4,'text-anchor':'middle',class:'tick'},svg).textContent=o.xLabel;
+  const maxN=Math.max(...d.cells.map(c=>c[2]),SNAP.min_cell);
+  d.cells.forEach(([i,j,n])=>{
+    const shade=HEX_RAMP[clamp(Math.floor((n-SNAP.min_cell)/Math.max(1,maxN-SNAP.min_cell+1)*HEX_RAMP.length),0,HEX_RAMP.length-1)];
+    const x0=X(d.x[i]),x1=X(d.x[i+1]),y0=Y(d.y[j+1]),y1=Y(d.y[j]);
+    const r=el('rect',{x:x0+.5,y:y0+.5,width:Math.max(1,x1-x0-1),height:Math.max(1,y1-y0-1),fill:shade},svg);
+    r.addEventListener('mousemove',ev=>showTip(`${o.tipX}: ${o.fx?o.fx(d.x[i]):fmt(d.x[i])}–${o.fx?o.fx(d.x[i+1]):fmt(d.x[i+1])}<br>${o.tipY}: ${fmt(d.y[j])}–${fmt(d.y[j+1])} psi<br><b>${n} registros</b>`,ev));
+    r.addEventListener('mouseleave',hideTip);
+  });
+  if(same) el('line',{x1:X(xd[0]),y1:Y(xd[0]),x2:X(xd[1]),y2:Y(xd[1]),stroke:'var(--ink-2)','stroke-dasharray':'4 3','stroke-width':1.5},svg);
+}
+
+function drawHexQuality(){
+  const host=$('[data-hex-qual]');
+  if(!host) return;
+  host.innerHTML='';
+  const v=VARS.find(x=>x.k===qualVarK)||VARS[0],d=SNAP.quality[scopeKey()][v.k][TARGETS[qualAgeJ]];
+  if(!d||!d.cells.length) return noData(host,`Sin registros suficientes de ${v.code} en ${scopeKey()} para mostrar sin revelar filas individuales.`);
+  drawDensity(host,d,{fallback:760,H:290,aria:`Densidad de ${v.name} contra ${AGE_NAME[qualAgeJ]}`,xLabel:`${v.name} · ${v.code} (${v.uOrig})`,tipX:v.code,tipY:AGE_NAME[qualAgeJ],fx:x=>x.toFixed(2)});
+}
+
+function drawHexOOF(){
+  const host=$('[data-hex-oof]');
+  if(!host) return;
+  host.innerHTML='';
+  TARGETS.forEach((target,j)=>{
+    const box=document.createElement('div');
+    box.style.minWidth='0';
+    host.appendChild(box);
+    const d=SNAP.predicted_vs_observed[scopeKey()][target];
+    if(!d||!d.cells.length) return noData(box,`${AGE_NAME[j]}: sin registros suficientes en ${scopeKey()} para mostrar sin revelar filas individuales.`);
+    drawDensity(box,d,{identity:true,title:`${AGE_NAME[j]} · n=${d.n}`,aria:`Predicho contra real a ${AGE_NAME[j]}`,xLabel:'real (psi)',tipX:'Real',tipY:'Predicho'});
+  });
+}
+
+function drawResPage(){
+  drawResHist();
+  drawHexQuality();
+  drawHexOOF();
+}
+
+/* ---------- Página Lotes: evaluación por CSV, ejemplo sintético e histórico por tipo y estado ---------- */
+const REQ_COLS=['ProductType',...VARS.map(v=>v.code)];
+$('[data-req-cols]').innerHTML=REQ_COLS.map(c=>`<span class="id">${c}</span>`).join('')+`<span class="id ink3">lot_id (opcional)</span>`;
+
+const R=rng(42),gauss=()=>{let u=0,v=0;while(!u)u=R();while(!v)v=R();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)};
+const LOTS_RAW=[...Array(18)].map((_,i)=>{
+  const type=i%7===3?'Type 2':i%6===5?'Type 3':'Type 1';
+  const p=Object.fromEntries(VARS.map(v=>[v.k,Math.round(clamp(50+gauss()*22,1,99))]));
+  if(i===1||i===9){ p.MPD=96; p.CCA=5; p.MPB=10; p.MPG=92; p.PMB=88; p.MPC=85; }
+  if(i===12){ p.MPD=94; p.CCA=8; p.MPB=14; p.MPG=88; p.PMB=84; p.MPC=82; }
+  const id=`EJ-${String(i+1).padStart(3,'0')}`;
+  const lot={id,type,pmaNA:true,p},P=predictA(lot),r=risk(P);
+  return {...lot,P,r};
+});
+LOTS_RAW.push(
+  {id:'EJ-019',type:'Type 1',missing:'valor faltante en Physical_Metric_B (Finura Blaine)',r:{pr:null,lvl:'none'}},
+  {id:'EJ-020',type:'Type 4',missing:'Type 4 (probable albañilería C91) no soportado: solo 4 lotes en entrenamiento',r:{pr:null,lvl:'none'}}
+);
+const LVL_ORDER={bad:0,warn:1,ok:2,none:3};
+const LOTS=LOTS_RAW.slice().sort((a,b)=>{
+  if(LVL_ORDER[a.r.lvl]!==LVL_ORDER[b.r.lvl]) return LVL_ORDER[a.r.lvl]-LVL_ORDER[b.r.lvl];
+  if(a.missing||b.missing) return a.id.localeCompare(b.id);
+  const pa=a.r.pr===null?(a.P.T.meta-a.P.lo[2])/10000:a.r.pr;
+  const pb=b.r.pr===null?(b.P.T.meta-b.P.lo[2])/10000:b.r.pr;
+  return pb-pa;
+});
+
+let lf='all';
+$('[data-lf]').innerHTML=[['all','Todos'],['bad','Bajo meta'],['warn','En vigilancia'],['ok','Cumplen'],['none','Sin predicción']].map(([k,n])=>`<button data-f="${k}" aria-pressed="${k==='all'}">${n}</button>`).join('');
+$$('[data-f]').forEach(b=>b.addEventListener('click',()=>{lf=b.dataset.f;$$('[data-f]').forEach(x=>x.setAttribute('aria-pressed',x===b));drawLots()}));
+
+function drawLots(){
+  const byType=LOTS.filter(l=>sharedType==='all'||l.type===sharedType);
+  const cnt=k=>byType.filter(l=>l.r.lvl===k).length;
+  $('[data-lsentence]').innerHTML=`<b>${byType.length} lotes</b> en el ejemplo sintético (${sharedType==='all'?'todos los tipos':sharedType}): ${stTag('off',cnt('bad')+' bajo meta')}, ${stTag('watch',cnt('warn')+' en vigilancia')}, ${stTag('ok',cnt('ok')+' cumplen')} y ${stTag('none',cnt('none')+' sin predicción')}.`;
+
+  const rows=byType.filter(l=>lf==='all'||l.r.lvl===lf);
+  $('[data-ltable]').innerHTML=`<thead><tr><th>Lote</th><th>Tipo</th><th class="n">1 día</th><th class="n">7 días</th><th class="n">28 días</th><th class="n">Intervalo 28 días</th><th class="n">P(no cumplir)</th><th>Estado</th></tr></thead><tbody>`+
+    rows.map(l=>l.missing
+      ?`<tr><td class="id">${l.id}</td><td>${l.type} <span class="xs ink3">${TYPES[l.type]?TYPES[l.type].lab:''}</span></td><td class="n ink3" colspan="5">Sin predicción: ${l.missing}</td><td>${stTag('none','Sin predicción')}</td></tr>`
+      :`<tr class="go${l.r.lvl==='bad'?' bad-row':''}" data-lot="${l.id}" tabindex="0"><td class="id"><b>${l.id}</b></td><td>${l.type} <span class="xs ink3">${TYPES[l.type].lab}</span></td><td class="n">${fmt(l.P.v[0])}</td><td class="n">${fmt(l.P.v[1])}</td><td class="n" style="${l.r.lvl==='bad'?'color:var(--off-ink);font-weight:700':''}">${fmt(l.P.v[2])}</td><td class="n ink2">${fmt(l.P.lo[2])}–${fmt(l.P.hi[2])}${l.r.out?' <span class="xs" style="color:var(--caution)">no val.</span>':''}</td><td class="n">${l.r.pr===null?'<span class="ink3" title="No se estima fuera de la región ni sin calibración">—</span>':(l.r.pr*100).toFixed(1)+'%'}</td><td>${stTag(LV[l.r.lvl][0],LV[l.r.lvl][1])}</td></tr>`
+    ).join('')+'</tbody>';
+  $$('[data-lot]').forEach(tr=>{
+    const open=()=>{loadLot(LOTS.find(x=>x.id===tr.dataset.lot));go('sim')};
+    tr.addEventListener('click',open);
+    tr.addEventListener('keydown',e=>{if(e.key==='Enter')open()});
+  });
+}
+
+function showSynthLots(){
+  $('[data-lotes-empty]').style.display='none';
+  $('[data-lotes-synth]').style.display='block';
+  drawLots();
+}
+function showEmptyLots(){
+  $('[data-lotes-synth]').style.display='none';
+  $('[data-lotes-empty]').style.display='block';
+}
+$('[data-use-synth]').addEventListener('click',showSynthLots);
+$('[data-back-empty]').addEventListener('click',showEmptyLots);
+
+$('[data-csv-input]').addEventListener('change',ev=>{
+  const file=ev.target.files&&ev.target.files[0];
+  const fb=$('[data-csv-feedback]');
+  if(!file){fb.style.display='none';return;}
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const text=String(reader.result||'').replace(/^\uFEFF/,'');
+    const firstLine=(text.split(/\r?\n/).find(line=>line.trim().length>0)||'').trim();
+    const sep=firstLine.includes(';')&&!firstLine.includes(',')?';':',';
+    const headers=firstLine?firstLine.split(sep).map(h=>h.trim().replace(/^["']|["']$/g,'')):[];
+    const missing=REQ_COLS.filter(c=>!headers.includes(c));
+    fb.style.display='block';
+    if(missing.length>0){
+      fb.innerHTML=`<div class="verdict off"><div><div class="t">Encabezado incompleto en <span class="id">${file.name}</span></div><div class="d">Faltan ${missing.length} columnas requeridas: ${missing.map(c=>`<span class="id">${c}</span>`).join(', ')}.</div></div></div>`;
+    }else{
+      const hasLotId=headers.includes('lot_id');
+      fb.innerHTML=`<div class="verdict watch"><div><div class="t">Encabezado válido en <span class="id">${file.name}</span></div><div class="d">Se verificaron las ${REQ_COLS.length} columnas requeridas${hasLotId?' y <span class="id">lot_id</span>':''}. <b>En esta referencia no hay servidor: el cálculo real se hace en la app.</b></div></div></div>`;
+    }
+  };
+  reader.readAsText(file.slice(0,8192));
+});
+
+/* Tabla agregada: Histórico por tipo y estado (valores de ejemplo; en la app, predicciones OOF de train) */
+const HIST_OOF=[
+  ...['Type 1','Type 2','Type 3'].map(n=>({t:n,lab:TYPES[n].lab,...SNAP.history[n],none:0})),
+  {t:'Type 4',lab:TYPES['Type 4'].lab,ok:0,warn:0,bad:0,none:4},
+  {t:'Type 5',lab:TYPES['Type 5'].lab,ok:0,warn:0,bad:0,none:1}
+];
+function renderHistTable(){
+  const tot=HIST_OOF.reduce((a,r)=>({ok:a.ok+r.ok,warn:a.warn+r.warn,bad:a.bad+r.bad,none:a.none+r.none}),{ok:0,warn:0,bad:0,none:0});
+  const sumRow=r=>r.ok+r.warn+r.bad+r.none;
+  $('[data-lhist]').innerHTML=`<thead><tr><th>Tipo</th><th class="n">${stTag('ok','Cumple')}</th><th class="n">${stTag('watch','En vigilancia')}</th><th class="n">${stTag('off','Bajo meta')}</th><th class="n">${stTag('none','Sin predicción')}</th><th class="n">Total</th></tr></thead><tbody>`+
+    HIST_OOF.map(r=>`<tr class="${sharedType===r.t?'sel':''}"><td>${r.t} <span class="xs ink3">${r.lab}</span></td><td class="n">${r.ok}</td><td class="n">${r.warn}</td><td class="n" style="${r.bad?'color:var(--off-ink);font-weight:600':''}">${r.bad}</td><td class="n ink3">${r.none}</td><td class="n"><b>${sumRow(r)}</b></td></tr>`).join('')+
+    `<tr style="border-top:1px solid var(--ink)"><td><b>Total (OOF de train)</b></td><td class="n"><b>${tot.ok}</b></td><td class="n"><b>${tot.warn}</b></td><td class="n" style="color:var(--off-ink)"><b>${tot.bad}</b></td><td class="n ink3"><b>${tot.none}</b></td><td class="n"><b>${sumRow(tot)}</b></td></tr></tbody>`;
+}
+
+/* ---------- modelos y confianza (cifras reales de docs/fase3/modelado.md y docs/fase4/lockbox.md) ---------- */
+// Validación (Diagnóstico condicional de docs/fase3/modelado.md §Diagnóstico condicional: tabla 3×3 y R² OOF dentro de cada tipo)
+// Test (docs/fase4/lockbox.md §Desempeño global y §Desempeño por tipo)
+const METRICS_GLOBAL={
+  GPR:{
+    cv:  [{r2:0.8325,mae:106.37,mape:4.694},{r2:0.5807,mae:259.44,mape:4.445},{r2:0.5627,mae:306.77,mape:4.340}],
+    test:[{r2:0.905, mae:96.2,  mape:4.34 }, {r2:0.640, mae:228.6, mape:3.76 }, {r2:0.569, mae:280.8, mape:3.77 }]
+  },
+  LightGBM:{
+    cv:  [{r2:0.7957,mae:118.81,mape:5.248},{r2:0.5506,mae:267.94,mape:4.636},{r2:0.5058,mae:321.94,mape:4.623}],
+    test:[{r2:0.881, mae:106.7, mape:4.76 }, {r2:0.657, mae:218.5, mape:3.59 }, {r2:0.611, mae:269.1, mape:3.60 }]
+  },
+  Huber:{
+    cv:  [{r2:0.6616,mae:114.85,mape:5.128},{r2:0.5355,mae:271.88,mape:4.540},{r2:0.5593,mae:329.41,mape:4.467}],
+    test:[{r2:0.830, mae:109.5, mape:4.84 }, {r2:0.502, mae:265.8, mape:4.35 }, {r2:0.458, mae:317.7, mape:4.25 }]
+  }
+};
+// Por tipo: CV R² OOF de docs/fase3/modelado.md (§R² OOF dentro de cada tipo); MAE y MAPE CV por tipo no publicados en modelado.md (null → '—').
+// Test R² y MAE por tipo de docs/fase4/lockbox.md (§Desempeño por tipo); MAPE test por tipo no publicado en lockbox.md (null → '—').
+const METRICS_BY_TYPE={
+  'Type 1':{
+    nTest:[121,129,125],
+    GPR:{
+      cv:  [{r2:0.574,mae:null,mape:null},{r2:0.279,mae:null,mape:null},{r2:0.474,mae:null,mape:null}],
+      test:[{r2:0.685,mae:95.7,mape:null},{r2:0.397,mae:234.7,mape:null},{r2:0.482,mae:288.0,mape:null}]
+    },
+    LightGBM:{
+      cv:  [{r2:0.479,mae:null,mape:null},{r2:0.249,mae:null,mape:null},{r2:0.451,mae:null,mape:null}],
+      test:[{r2:0.614,mae:105.6,mape:null},{r2:0.433,mae:222.1,mape:null},{r2:0.548,mae:269.9,mape:null}]
+    },
+    Huber:{
+      cv:  [{r2:0.562,mae:null,mape:null},{r2:0.163,mae:null,mape:null},{r2:0.367,mae:null,mape:null}],
+      test:[{r2:0.430,mae:106.9,mape:null},{r2:0.160,mae:274.4,mape:null},{r2:0.329,mae:331.0,mape:null}]
+    }
+  },
+  'Type 2':{
+    nTest:[9,9,8],
+    GPR:{
+      cv:  [{r2:0.264,mae:null,mape:null},{r2:-0.146,mae:null,mape:null},{r2:-0.010,mae:null,mape:null}],
+      test:[{r2:0.363,mae:59.8,mape:null},{r2:0.399,mae:181.6,mape:null},{r2:0.722,mae:225.7,mape:null}]
+    },
+    LightGBM:{
+      cv:  [{r2:0.153,mae:null,mape:null},{r2:-0.290,mae:null,mape:null},{r2:-0.268,mae:null,mape:null}],
+      test:[{r2:-0.912,mae:101.0,mape:null},{r2:0.510,mae:172.0,mape:null},{r2:0.705,mae:233.9,mape:null}]
+    },
+    Huber:{
+      cv:  [{r2:0.261,mae:null,mape:null},{r2:-0.138,mae:null,mape:null},{r2:0.071,mae:null,mape:null}],
+      test:[{r2:-2.269,mae:134.0,mape:null},{r2:0.350,mae:189.2,mape:null},{r2:0.769,mae:214.9,mape:null}]
+    }
+  },
+  'Type 3':{
+    nTest:[12,12,8],
+    GPR:{
+      cv:  [{r2:0.531,mae:null,mape:null},{r2:0.376,mae:null,mape:null},{r2:-0.072,mae:null,mape:null}],
+      test:[{r2:0.084,mae:128.4,mape:null},{r2:0.424,mae:197.9,mape:null},{r2:0.554,mae:222.3,mape:null}]
+    },
+    LightGBM:{
+      cv:  [{r2:0.373,mae:null,mape:null},{r2:0.388,mae:null,mape:null},{r2:-0.140,mae:null,mape:null}],
+      test:[{r2:0.042,mae:121.9,mape:null},{r2:0.280,mae:214.4,mape:null},{r2:0.355,mae:291.5,mape:null}]
+    },
+    Huber:{
+      cv:  [{r2:0.352,mae:null,mape:null},{r2:0.454,mae:null,mape:null},{r2:-0.018,mae:null,mape:null}],
+      test:[{r2:0.186,mae:116.8,mape:null},{r2:0.202,mae:231.7,mape:null},{r2:0.671,mae:213.4,mape:null}]
+    }
+  }
+};
+// HPO anidada en Etapa 3 para GPR (modelado.md §1 / multisalida.md): 106.69 / 259.65 / 307.51
+const GPR_NESTED=[106.69,259.65,307.51];
+// Media por tipo (L1) en pliegues comunes derivada de MAE_GPR - ΔMAE_GPR en modelado.md (159.62 / 303.94 / 410.43) y en lockbox.md (160.3 / 296.0 / 408.1)
+const L1=[159.62,303.94,410.43];
+const L1_TEST=[160.3,296.0,408.1];
+const MN={GPR:'Proceso gaussiano (GPR)',LightGBM:'LightGBM',Huber:'Huber (lineal)'};
+
+function drawMult(){
+  const host=$('[data-mult]');
+  if(!host) return;
+  const align=$('[data-align]').checked,gmax=460;
+  const M=sharedType==='all'?METRICS_GLOBAL:METRICS_BY_TYPE[sharedType];
+  host.innerHTML='';
+  AGE_NAME.forEach((a,j)=>{
+    const box=document.createElement('div');
+    box.style.minWidth='0';
+    host.appendChild(box);
+    const W=measureW(box,340),compact=W<330;
+    const vals=['GPR','LightGBM','Huber'].flatMap(f=>[M[f].cv[j].mae,M[f].test[j].mae]).filter(v=>v!==null);
+    if(sharedType==='all') vals.push(L1[j]);
+    const mx=align?gmax:Math.ceil(Math.max(300,...vals)*1.15/50)*50;
+    const H=172,L=compact?68:124,Rr=14,T=28,B=26,X=v=>L+v/mx*(W-L-Rr);
+    const svg=el('svg',{width:String(W),height:String(H),role:'img','aria-label':`Error MAE a ${a} (${sharedType==='all'?'Todos':sharedType})`},box);
+    el('text',{x:0,y:14,class:'val'},svg).textContent=`${a} · ${sharedType==='all'?'Global':sharedType}`;
+    const rawTicks=mx>300?(compact?[0,200,400]:[0,100,200,300,400]):(compact?[0,100,200,300]:[0,50,100,150,200,250,300]);
+    rawTicks.filter(t=>t<=mx).forEach(t=>{
+      el('line',{x1:X(t),x2:X(t),y1:T,y2:H-B,stroke:'var(--rule-2)'},svg);
+      el('text',{x:X(t),y:H-8,'text-anchor':'middle',class:'tick'},svg).textContent=t;
+    });
+    if(sharedType==='all'){
+      el('line',{x1:X(L1[j]),x2:X(L1[j]),y1:T-4,y2:H-B,stroke:'var(--ink-2)','stroke-dasharray':'3 3'},svg);
+      const l1Anchor=X(L1[j])>W-70?'end':'start',l1Dx=l1Anchor==='end'?-4:4;
+      el('text',{x:X(L1[j])+l1Dx,y:T-8,'text-anchor':l1Anchor,class:'tick'},svg).textContent=compact?'L1':'media por tipo';
+    }else{
+      el('text',{x:W-Rr,y:14,'text-anchor':'end',class:'tick'},svg).textContent='CV MAE por tipo: —';
+    }
+    ['GPR','LightGBM','Huber'].forEach((f,i)=>{
+      const y=T+18+i*36,c=f==='GPR'?'var(--action)':'var(--muted-mark)';
+      const lblTxt=compact?(f==='GPR'?'GPR':f==='LightGBM'?'LGBM':'Huber'):MN[f];
+      el('text',{x:0,y:y+4,class:'lbl',style:f==='GPR'?'fill:var(--ink);font-weight:600':''},svg).textContent=lblTxt;
+      const cvMae=M[f].cv[j].mae,tMae=M[f].test[j].mae;
+      if(cvMae!==null&&tMae!==null){
+        el('line',{x1:X(tMae),x2:X(cvMae),y1:y,y2:y,stroke:c,'stroke-width':1.5},svg);
+        el('circle',{cx:X(cvMae),cy:y,r:5,fill:'#fff',stroke:c,'stroke-width':1.5},svg);
+      }
+      if(tMae!==null){
+        const d=el('circle',{cx:X(tMae),cy:y,r:5,fill:c},svg);
+        d.addEventListener('mousemove',ev=>showTip(`${MN[f]} · ${a} (${sharedType==='all'?'Global':sharedType})<br>Test MAE: <b>${tMae.toFixed(1)} psi</b> · CV MAE: <b>${cvMae!==null?cvMae.toFixed(2)+' psi':'— (sin desglose en modelado.md)'}</b>`,ev));
+        d.addEventListener('mouseleave',hideTip);
+      }
+    });
+  });
+}
+$('[data-align]').addEventListener('change',drawMult);
+
+function renderModTables(){
+  const isAll=sharedType==='all';
+  const M=isAll?METRICS_GLOBAL:METRICS_BY_TYPE[sharedType];
+  const fR2=(v,d=3)=>v===null||v===undefined?'—':v.toFixed(d);
+  const fMae=(v,d=1)=>v===null||v===undefined?'—':v.toFixed(d);
+  const fMape=(v,d=2)=>v===null||v===undefined?'—':v.toFixed(d)+'%';
+
+  $('[data-mtable]').innerHTML=`<table class="t"><thead>`+
+    `<tr><th rowspan="2">Modelo</th><th rowspan="2">Partición</th>`+
+    `${AGE_NAME.map((a,j)=>`<th class="n" colspan="3" style="border-bottom:1px solid var(--rule)">${a} (${AGE_LBL[j]})${!isAll?` · n test=${M.nTest[j]}`:''}</th>`).join('')}</tr>`+
+    `<tr>${AGE_NAME.map(()=>`<th class="n">R²</th><th class="n">MAE</th><th class="n">MAPE</th>`).join('')}</tr>`+
+    `</thead><tbody>`+
+    ['GPR','LightGBM','Huber'].map(f=>{
+      const sel=f==='GPR'?' class="sel"':'';
+      const cvCells=[0,1,2].map(j=>{
+        const c=M[f].cv[j];
+        return `<td class="n ink2">${fR2(c.r2,isAll?4:3)}</td><td class="n ink2">${fMae(c.mae,2)}</td><td class="n ink2">${fMape(c.mape,3)}</td>`;
+      }).join('');
+      const testCells=[0,1,2].map(j=>{
+        const t=M[f].test[j];
+        return `<td class="n"><b>${fR2(t.r2,3)}</b></td><td class="n"><b>${fMae(t.mae,1)}</b></td><td class="n">${fMape(t.mape,2)}</td>`;
+      }).join('');
+      return `<tr${sel}><td rowspan="2"><b>${MN[f]}</b>${f==='GPR'?'<div class="xs ink3">campeón seleccionado</div>':''}</td><td class="xs ink2">Validación (CV)</td>${cvCells}</tr>`+
+             `<tr${sel}><td class="xs"><b>Test (lockbox)</b></td>${testCells}</tr>`;
+    }).join('')+
+    (isAll
+      ?`<tr><td rowspan="2" class="ink2">Media por tipo (L1, reconstruida de ΔMAE)</td><td class="xs ink2">Validación (CV)</td>${L1.map(m=>`<td class="n ink3">—</td><td class="n ink2">${m.toFixed(2)}</td><td class="n ink3">—</td>`).join('')}</tr>`+
+       `<tr><td class="xs ink2">Test (lockbox)</td>${L1_TEST.map(m=>`<td class="n ink3">—</td><td class="n ink2">${m.toFixed(1)}</td><td class="n ink3">—</td>`).join('')}</tr>`
+      :`<tr><td class="ink2">Media por tipo (L1)</td><td class="xs ink2">Por tipo</td><td class="n ink3" colspan="9">— (dentro de un mismo ProductType la predicción de L1 es constante; R² intra-tipo = 0 por definición)</td></tr>`
+    )+
+    `</tbody></table>`;
+
+  $('[data-mtable-src]').innerHTML=isAll
+    ?`Fuente: <span class="id">docs/fase3/modelado.md</span> (§Diagnóstico condicional: tabla 3×3, CV agrupada 5×5 con perfiles congelados) y <span class="id">docs/fase4/lockbox.md</span> (§Desempeño global, evaluación única). Con HPO anidada en Etapa 3, GPR obtuvo MAE <b>${GPR_NESTED.map(x=>x.toFixed(2)).join(' / ')} psi</b>. La fila L1 reconstruye MAE a partir de <span class="id">MAE − ΔMAE</span>; sus celdas de R² y MAPE no figuran en los documentos y se dejan como <b>—</b>.`
+    :`Filtro activo: <b>${sharedType}</b>. Validación R² proviene de <span class="id">docs/fase3/modelado.md</span> (§R² OOF dentro de cada tipo); MAE y MAPE de validación por tipo no se publican en <span class="id">modelado.md</span> y se dejan como <b>—</b>. Test R² y MAE provienen de <span class="id">docs/fase4/lockbox.md</span> (§Desempeño por tipo${sharedType!=='Type 1'?' · muestra reducida de 8–12 filas, cifras no fiables':''}); MAPE de test por tipo no se publica en <span class="id">lockbox.md</span> y se deja como <b>—</b>.`;
+
+  const driftNote=isAll?'':`<div class="panel-note" style="margin-bottom:10px">El documento <span class="id">docs/fase3/modelado.md</span> (§Permutación, aprendizaje y sensibilidad temporal) solo reporta la sensibilidad temporal de forma global, sin desglose para <b>${sharedType}</b>. Se muestran las cifras globales documentadas.</div>`;
+  $('[data-drift]').innerHTML=driftNote+`<table class="t"><thead><tr><th>Edad</th><th class="n">Test (global)</th><th class="n">CV (perfiles congelados)</th><th class="n">Validación temporal</th></tr></thead><tbody>${[['1 día',96.2,106.37,154.12],['7 días',228.6,259.44,411.80],['28 días',280.8,306.77,475.20]].map(([n,a,b,c])=>`<tr><td>${n}</td><td class="n">${a.toFixed(1)}</td><td class="n">${b.toFixed(2)}</td><td class="n" style="color:var(--caution);font-weight:600">${c.toFixed(0)}</td></tr>`).join('')}</tbody></table><p class="src">MAE en psi del GPR seleccionado (<span class="id">docs/fase3/modelado.md</span>: brecha temporal +47.75 / +152.36 / +168.43 psi sobre CV aleatoria).</p>`;
+
+  $('[data-types-conf]').innerHTML=`<table class="t"><thead><tr><th>Tipo</th><th class="n">Cobertura CV 1 / 7 / 28 d</th><th class="n">Cobertura test 1 / 7 / 28 d</th><th>Uso en el simulador</th></tr></thead><tbody>${[
+    ['Type 1','probable IL · caliza','91.8 / 91.8 / 91.9%','94.2 / 93.8 / 92.8%','ok','Confiable'],
+    ['Type 2','probable Tipo III · baja confianza','80.0 / 83.0 / 82.2%','100 / 100 / 100% (n=8–9)','watch','Baja confianza'],
+    ['Type 3','probable C150 no-III','88.6 / 93.8 / 88.9%','91.7 / 100 / 100% (n=8–12)','ok','Confiable'],
+    ['Type 4','probable albañilería C91','4 lotes (s/d / 30.0 / 15.0%)','sin filas en test','off','No disponible'],
+    ['Type 5','probable Tipo IP · baja confianza','1 lote (0.0 / 0.0 / 0.0%)','sin filas en test','off','No disponible']
+  ].map(([t,l,c,ct,s,x])=>`<tr class="${sharedType===t?'sel':''}"><td>${t} <span class="xs ink3">${l}</span></td><td class="n">${c}</td><td class="n ink2">${ct}</td><td>${stTag(s,x)}</td></tr>`).join('')}</tbody></table><p class="src">Nominal 90% (<span class="id">docs/fase3/modelado.md</span> y <span class="id">docs/fase4/lockbox.md</span>). En test global, GPR cubrió 94.4 / 94.7 / 93.6% con anchos medios de 450.3 / 1124.9 / 1378.9 psi.</p>`;
+}
+
+/* ---------- Panel: Variables más importantes por edad (GPR, top 5) ----------
+   docs/fase3/modelado.md (§Explicación y consistencia física) reporta para GPR la correlación valor–SHAP
+   de Blaine→R1 (rho = 0.9868, coherente) e indica que las tablas completas de importancia se guardan en
+   artefactos locales (outputs/fase3/final/). Por regla de cifras, las magnitudes del top 5 se rotulan como
+   "Valores de ejemplo", manteniendo el orden físico-estadístico documentado en docs/fase2/eda.md (§2). */
+const IMP_NAMES={'ProductType_Type 2':'Pertenecer a Type 2','ProductType_Type 3':'Pertenecer a Type 3','physical_metric_a_missing':'Falta la segunda medida de finura'};
+const GPR_IMP=TARGETS.map(t=>SNAP.importance[t].slice(0,5).map(r=>{
+  const v=VARS.find(x=>x.code===r.column);
+  return {name:v?v.name:(IMP_NAMES[r.column]||r.column),code:r.column,val:r.value,flag28:v&&NONPHYS.has(v.k)};
+}));
+let impAgeJ=2;
+const impAgeHost=$('[data-imp-age]');
+if(impAgeHost){
+  impAgeHost.innerHTML=AGE_NAME.map((a,j)=>`<button data-iage="${j}" aria-pressed="${j===2}">${a}</button>`).join('');
+  impAgeHost.querySelectorAll('[data-iage]').forEach(b=>b.addEventListener('click',()=>{
+    impAgeJ=+b.dataset.iage;
+    impAgeHost.querySelectorAll('[data-iage]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+    drawImpBars();
+  }));
+}
+function drawImpBars(){
+  const host=$('[data-imp-bars]');
+  if(!host) return;
+  const rows=GPR_IMP[impAgeJ],mx=Math.max(...rows.map(r=>r.val));
+  const typeNotice=sharedType==='all'?'':`<div class="panel-note" style="margin-bottom:10px">No hay desglose de importancia por <span class="id">ProductType</span> (<b>${sharedType}</b>) ; se muestra el perfil global por edad sin simular valores por tipo.</div>`;
+  host.innerHTML=typeNotice+rows.map((r,idx)=>{
+    const w=Math.round((r.val/mx)*100);
+    const star=impAgeJ===2&&r.flag28?` <span class="flag" title="Asociación invertida a 28 días por deriva histórica">*</span>`:'';
+    return `<div class="row"><span><b>${idx+1}. ${r.name}</b>${star}<div class="xs id ink3">${r.code}</div></span><span class="bar"><i style="width:${w}%"></i></span><span class="v">${fmt(r.val)} psi</span></div>`;
+  }).join('');
+  $('[data-imp-src]').innerHTML=`Fuente: artefactos de entrenamiento del GPR; |SHAP| medio en psi sobre 32 filas de train, antes de la proyección. <b>Asociación descriptiva, no causa.</b>`+
+    (impAgeJ===2?` <span style="color:var(--caution);font-weight:500">* En 28 días, finura Blaine (<span class="id">Physical_Metric_B</span>) y C₃S (<span class="id">Mineral_Phase_C</span>) presentan signo aparente negativo por la deriva histórica entre bloques del archivo, no por la química de hidratación.</span>`:'');
+}
+
+/* ---------- valor (ilustrativo, en píxeles reales, medido con ResizeObserver) ---------- */
+const ROI_BASE=18.4;
+// Cuatro palancas de ahorro del modelo de negocio:
+// 1. Factor clínker (sobrediseño), 2. Merma y no conformidad, 3. Agilidad en silos, 4. Aditivos
+const ROI_LEVERS=[
+  {
+    name:'Factor clínker (sobrediseño)',
+    mech:'Las plantas apuntan a spec + k·σ porque el R28 llega tarde; bajar de σ_proceso a σ_modelo libera margen en MPa.',
+    formula:'ΔMPa → reducción del factor clínker × ($/t + t CO₂/t clínker × precio del carbono)',
+    val:9.4
+  },
+  {
+    name:'Merma y no conformidad',
+    mech:'Detectar lotes en riesgo a tiempo desde el día 0 antes del despacho.',
+    formula:'Tasa evitada × costo por lote',
+    val:4.1
+  },
+  {
+    name:'Agilidad en silos',
+    mech:'Liberar producto con la predicción e intervalo calibrado en vez de esperar ensayos a 28 días.',
+    formula:'Días de inventario × costo de almacenamiento',
+    val:2.8
+  },
+  {
+    name:'Aditivos',
+    mech:'Dosificar mejoradores y aditivos según la resistencia predicha de cada lote.',
+    formula:'Δ dosis × costo',
+    val:2.1
+  }
+];
+const TORN=[
+  ['Factor clínker (Δ clínker por MPa)',-4.2,5.3],
+  ['Precio del clínker',-3.8,4.1],
+  ['Merma y no conformidad (tasa × costo/lote)',-2.4,3.1],
+  ['Factor k de seguridad',-2.2,2.5],
+  ['Agilidad en silos (días × almacenamiento)',-1.7,2.2],
+  ['Aditivos (Δ dosis × costo)',-1.4,1.9],
+  ['Volumen anual',-1.5,1.6],
+  ['Precio del CO₂',-1.1,1.5]
+];
+readout($('[data-vread]'),[
+  {l:'Ahorro anual · 4 palancas (Valores de ejemplo)',v:'18.4',u:'M MXN',r:'P10–P90: 11.2 – 26.9 M MXN · por validar con GCC'},
+  {l:'CO₂ evitado (Valores de ejemplo)',v:'9,800',u:'t/año',r:'por menor factor clínker · por validar con GCC'},
+  {l:'Valor de 1 MPa de precisión (Valores de ejemplo)',v:'8.1',u:'M MXN',r:'pendiente de la curva en el error actual · por validar con GCC'}
+]);
+
+$('[data-levers-roi]').innerHTML=`<table class="t"><thead><tr><th>Palanca</th><th>Mecanismo y fórmula (<span class="id">ESTRATEGIA.md</span> §6)</th><th class="n">Ahorro anual</th></tr></thead><tbody>`+
+  ROI_LEVERS.map(r=>`<tr><td><b>${r.name}</b></td><td><div>${r.mech}</div><div class="xs id ink3" style="margin-top:2px">${r.formula}</div></td><td class="n"><b>${r.val.toFixed(1)} M MXN</b><div class="xs" style="color:var(--caution)">Valores de ejemplo · por validar con GCC</div></td></tr>`).join('')+
+  `<tr style="border-top:1px solid var(--ink)"><td><b>Total escenario base</b></td><td class="xs ink2">Suma de las cuatro palancas (clínker, merma y no conformidad, silos y aditivos)</td><td class="n"><b>${ROI_BASE.toFixed(1)} M MXN</b><div class="xs" style="color:var(--caution)">Valores de ejemplo · por validar con GCC</div></td></tr></tbody></table>`;
+
+$('[data-phys-why]').innerHTML=[
+  {
+    t:'1. Finura y resistencia temprana',
+    d:`<span class="id">Physical_Metric_B</span> (<b>interpretación probable</b>: finura Blaine, confianza media–alta) acelera la hidratación temprana y mantiene asociación parcial positiva con R1 dentro de Type 1 (<span class="id">ρ = +0.1461</span>, IC95% <span class="id">[0.0517, 0.2428]</span>, y <span class="id">+0.3244</span> más asociada con R1 que con R28 en <span class="id">eda.md</span>; correlación valor–SHAP <span class="id">ρ = 0.9868</span> en el GPR). En las fases minerales tipo Bogue/Rietveld, <span class="id">Mineral_Phase_A</span> es la suma exacta redondeada de <span class="id">B + C</span> (<span class="id">k_A − k_B − k_C ∈ {−1, 0, +1}</span>, <b>interpretación probable</b>: silicatos totales <span class="id">C₃S + C₂S</span> con <span class="id">ρ(B, C) = −0.72</span>).`
+  },
+  {
+    t:'2. Caliza como diluyente',
+    d:`<span class="id">Mineral_Phase_D</span> (<b>interpretación probable</b>: calcita / caliza, confianza alta–media) actúa como diluyente del clínker (<span class="id">ρ = −0.59</span> con <span class="id">Mineral_Phase_A</span>): dos rutas independientes en <span class="id">variable_fingerprint.md</span> coinciden en <span class="id">≈ 40%</span> de caliza en Type 4 (mediana R28 <span class="id">3,485 psi</span>), <span class="id">≈ 9–10%</span> en Type 1 (<span class="id">7,470 psi</span>) y <span class="id">≈ 3%</span> en Types 2 y 3 (<span class="id">8,540</span> y <span class="id">7,900 psi</span>). Dentro de Type 1 su dispersión es estrecha (<span class="id">SD ≈ 0.035</span>) y el efecto parcial intra-tipo (<span class="id">+0.0428</span>) queda no concluyente frente al ruido.`
+  },
+  {
+    t:'3. Deriva histórica',
+    d:`Entre los bloques 1 y 8 de entrenamiento en Type 1 (<span class="id">eda.md</span> §6), la mediana de Blaine baja (<span class="id">0.7136 → −0.5924 z</span>) mientras R28 sube (<span class="id">6,730 → 7,400 psi</span>, <span class="id">+9.96%</span>) y R1 baja (<span class="id">2,400 → 2,230 psi</span>, <span class="id">−7.08%</span>). Esa deriva histórica genera un efecto Simpson en R1–R28 (Spearman pasa de <span class="id">−0.0496</span> a <span class="id">+0.41–0.43</span> al controlar por bloque) e induce signo aparente negativo de Blaine con R28 (<span class="id">−0.1877</span>, <b>interpretación probable</b>), por lo que el simulador bloquea recomendaciones contrarias a la física.`
+  }
+].map(x=>`<div class="phys-item"><div><b>${x.t}</b> · <span class="flag">interpretación probable</span></div><div class="ink2" style="margin-top:4px">${x.d}</div></div>`).join('');
+
+function drawTornA(host){
+  if(!host) return;
+  host.innerHTML='';
+  const rows=TORN.slice().sort((a,b)=>(b[2]-b[1])-(a[2]-a[1]));
+  const W=measureW(host,540),stacked=W<460;
+  const rh=stacked?46:34,H=rows.length*rh+34,L=stacked?38:Math.min(220,Math.round(W*0.42)),Rr=38,lo=-6,hi=6;
+  const X=v=>L+(v-lo)/(hi-lo)*(W-L-Rr);
+  const svg=el('svg',{width:String(W),height:String(H),role:'img','aria-label':'Sensibilidad del ahorro anual'},host);
+  rows.forEach((t,i)=>{
+    const y=4+i*rh;
+    if(stacked){
+      el('text',{x:0,y:y+13,class:'lbl'},svg).textContent=t[0];
+    }else{
+      el('text',{x:0,y:y+18,class:'lbl'},svg).textContent=t[0];
+    }
+    const barY=stacked?y+19:y+7,txtY=stacked?y+31:y+19;
+    [[t[1],'var(--muted-mark)','valor bajo'],[t[2],'var(--action)','valor alto']].forEach(([v,c,n])=>{
+      const r=el('rect',{x:Math.min(X(0),X(v)),y:barY,width:Math.max(2,Math.abs(X(v)-X(0))),height:15,fill:c},svg);
+      el('text',{x:v<0?X(v)-5:X(v)+5,y:txtY,'text-anchor':v<0?'end':'start',class:'tick'},svg).textContent=(v>0?'+':'−')+Math.abs(v).toFixed(1);
+      r.addEventListener('mousemove',ev=>showTip(`${t[0]} · ${n}<br>Ahorro <b>${(ROI_BASE+v).toFixed(1)} M MXN</b><br>Valores de ejemplo · por validar con GCC`,ev));
+      r.addEventListener('mouseleave',hideTip);
+    });
+  });
+  el('line',{x1:X(0),x2:X(0),y1:stacked?18:0,y2:H-26,stroke:'var(--ink)'},svg);
+  el('text',{x:X(0),y:H-6,'text-anchor':'middle',class:'tick'},svg).textContent=`Base ${ROI_BASE} M MXN · cambio en M MXN (ejemplo)`;
+}
+
+function drawVmaeA(host){
+  if(!host) return;
+  host.innerHTML='';
+  const W=measureW(host,460),compact=W<380;
+  const H=250,L=42,Rr=16,T=18,B=38,X=v=>L+(v-.5)/3.5*(W-L-Rr),Y=v=>T+(1-v/40)*(H-T-B),f=m=>34*Math.exp(-.42*(m-.5)),now=1.94;
+  const svg=el('svg',{width:String(W),height:String(H),role:'img','aria-label':'Ahorro anual frente al error a 28 días'},host);
+  for(let v=0;v<=40;v+=10){
+    el('line',{x1:L,x2:W-Rr,y1:Y(v),y2:Y(v),stroke:v?'var(--rule-2)':'var(--ink)'},svg);
+    el('text',{x:L-8,y:Y(v)+4,'text-anchor':'end',class:'tick'},svg).textContent=v;
+  }
+  el('text',{x:L-4,y:T-6,'text-anchor':'end',class:'tick'},svg).textContent='M MXN';
+  [1,2,3,4].forEach(m=>el('text',{x:X(m),y:H-20,'text-anchor':'middle',class:'tick'},svg).textContent=m);
+  el('text',{x:(L+W-Rr)/2,y:H-4,'text-anchor':'middle',class:'tick'},svg).textContent='error medio a 28 días (MPa)';
+  let d='';for(let i=0;i<=60;i++){const m=.5+3.5*i/60;d+=(i?'L':'M')+X(m)+','+Y(f(m))}
+  el('path',{d,fill:'none',stroke:'var(--action)','stroke-width':2},svg);
+  el('line',{x1:X(now),x2:X(now),y1:Y(f(now)),y2:H-B,stroke:'var(--ink-2)','stroke-dasharray':'3 3'},svg);
+  el('rect',{x:X(now)-4.5,y:Y(f(now))-4.5,width:9,height:9,fill:'var(--action)'},svg);
+  const noteTxt=compact?`Actual: 1.94 MPa (${f(now).toFixed(1)} M)`:`Modelo actual · 1.94 MPa · ${f(now).toFixed(1)} M MXN`;
+  const anchorRight=X(now)+170>W-Rr;
+  el('text',{
+    x:anchorRight?W-Rr:X(now)+8,
+    y:Math.max(T+12,Y(f(now))-10),
+    'text-anchor':anchorRight?'end':'start',
+    class:'val',stroke:'var(--surface)','stroke-width':3,'paint-order':'stroke'
+  },svg).textContent=noteTxt;
+}
+
+/* ---------- evidencia ---------- */
+const SCA=[
+  ['1. Negocio y física','15%','watch','En curso','Cuatro palancas de ahorro (merma, silos, aditivos y clínker) y física documentada'],
+  ['2. Medallón en Unity Catalog','20%','ok','Completo','791 = 773 limpias + 18 en cuarentena'],
+  ['3. EDA y MLflow','20%','watch','En curso','11 runs auditados en local; corrida completa en Databricks pendiente'],
+  ['4. Modelo multisalida','20%','watch','Pendiente de benchmark','Supera la referencia propia L1; benchmark oficial sin recibir · Test: MAE 96.2 / 228.6 / 280.8 psi'],
+  ['5. Dashboard','15%','watch','En curso','Simulador interactivo, seis vistas de §3.4 y alertas dinámicas en esta aplicación'],
+  ['6. Presentación','10%','none','Pendiente','Video y sesión de preguntas']
+];
+$('[data-score]').innerHTML=`<table class="t"><thead><tr><th>Criterio</th><th class="n">Peso</th><th>Estado</th></tr></thead><tbody>${SCA.map(r=>`<tr><td>${r[0]}<div class="xs ink3">${r[4]}</div></td><td class="n">${r[1]}</td><td>${stTag(r[2],r[3])}</td></tr>`).join('')}</tbody></table>`;
+$('[data-lineage]').innerHTML=`<table class="t"><thead><tr><th>Tabla</th><th class="n">Versión</th><th class="n">Filas</th></tr></thead><tbody>${[['gold_predictions',14,'773'],['gold_train_ranges',14,'36'],['gold_model_metrics',14,'27'],['gold_feature_importance',14,'36'],['gold_roi_scenarios',6,'10,000'],['rubric_scorecard',22,'6'],['dq_results',22,'19']].map(([t,v,n])=>`<tr><td class="id">datathon.gcc.${t}</td><td class="n">v${v}</td><td class="n ink2">${n}</td></tr>`).join('')}</tbody></table><p class="src"><b>Valores de ejemplo</b> en versiones y conteos de filas, salvo el de predicciones (773 lotes limpios: 621 train + 152 lockbox).</p>`;
+
+const COV34=[
+  ['1. Resumen de resistencias: distribución de Strength1, Strength7 y Strength28','res','Resistencias (#res)','Small multiples de histogramas por edad con la rampa monocromática y mediana por tipo.'],
+  ['2. Comparación de modelos: R², MAE y MAPE entre los 3 modelos para cada resistencia','mod','Modelos y confianza (#mod)','Tabla completa 3 modelos × 3 edades en validación (modelado.md) y test (lockbox.md), más dot plot.'],
+  ['3. Variables de calidad más importantes para el mejor modelo de cada resistencia','mod','Modelos y confianza (#mod)','Panel "Variables más importantes por edad" (top 5 para GPR con selector de edad y nota causal) y contribuciones en Simulador (#sim).'],
+  ['4. Relación calidad-resistencia: scatter plots de variables relevantes vs cada resistencia','res','Resistencias (#res)','Panel "Calidad contra resistencia" con selector de variable y edad en densidad densidad (ocultando celdas con < N registros).'],
+  ['5. Predicciones vs. reales: gráfico de dispersión del mejor modelo para cada resistencia','res','Resistencias (#res)','Panel "Predicho contra real" en densidad densidad por edad con línea identidad 1:1 sobre predicciones OOF de entrenamiento.'],
+  ['6. Filtro por ProductType','res','Resistencias (#res) · Lotes (#lotes) · Modelos (#mod)','Control Segmented compartido (Todos, Type 1, Type 2, Type 3) sincronizado entre las tres páginas, más selector en Simulador (#sim).']
+];
+$('[data-cov34]').innerHTML=`<table class="t"><thead><tr><th>Vista requerida en §3.4 (<span class="id">docs/README.md</span>)</th><th>Página donde se cumple</th><th>Implementación en la referencia</th></tr></thead><tbody>`+
+  COV34.map(([v,page,lbl,desc])=>`<tr><td><b>${v}</b></td><td><button class="txtbtn" data-jump="${page}">${lbl}</button></td><td class="ink2">${desc}</td></tr>`).join('')+
+  `</tbody></table>`;
+$$('[data-jump]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.jump)));
+
+/* ---------- navegación con hashchange y botón Atrás ---------- */
+const PAGES=['sim','res','lotes','mod','val','evi'];
+function redrawActiveCharts(){
+  const cur=shown||predictA(S);
+  const simP=$('[data-page="sim"]');
+  if(simP&&simP.classList.contains('on')) drawCurveA($('[data-curve]'),cur);
+  const resP=$('[data-page="res"]');
+  if(resP&&resP.classList.contains('on')) drawResPage();
+  const modP=$('[data-page="mod"]');
+  if(modP&&modP.classList.contains('on')) drawMult();
+  const valP=$('[data-page="val"]');
+  if(valP&&valP.classList.contains('on')){drawTornA($('[data-torn]'));drawVmaeA($('[data-vmae]'))}
+}
+
+function go(k,fromHash=false){
+  const target=PAGES.includes(k)?k:'sim';
+  $$('[data-go]').forEach(b=>b.dataset.go===target?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current'));
+  $$('[data-page]').forEach(p=>p.classList.toggle('on',p.dataset.page===target));
+  scrollTo(0,0);
+  if(!fromHash&&location.hash!=='#'+target){
+    try{history.pushState(null,'','#'+target)}catch(e){location.hash=target}
+  }
+  redrawActiveCharts();
+}
+$$('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go,false)));
+window.addEventListener('hashchange',()=>{const h=location.hash.slice(1)||'sim';go(h,true)});
+window.addEventListener('popstate',()=>{const h=location.hash.slice(1)||'sim';go(h,true)});
+
+/* ---------- ResizeObserver para redibujar todas las gráficas SVG según el ancho del contenedor ---------- */
+if(typeof ResizeObserver!=='undefined'){
+  let rafId=0;
+  const ro=new ResizeObserver(()=>{
+    cancelAnimationFrame(rafId);
+    rafId=requestAnimationFrame(redrawActiveCharts);
+  });
+  ['[data-curve]','[data-res-hist]','[data-hex-qual]','[data-hex-oof]','[data-mult]','[data-torn]','[data-vmae]'].forEach(sel=>{const node=$(sel);if(node)ro.observe(node)});
+}else{
+  window.addEventListener('resize',redrawActiveCharts);
+}
+
+/* ---------- arranque ---------- */
+renderSharedTypeFilters();
+DEF=LOTS.find(l=>!l.missing&&l.type==='Type 1'&&l.r.lvl==='warn')||LOTS.find(l=>!l.missing);
+S.type=DEF.type;VARS.forEach(v=>setP(v.k,DEF.p[v.k]));setLotId(DEF.id);
+drawResPage();drawLots();renderHistTable();drawMult();renderModTables();drawImpBars();drawTornA($('[data-torn]'));drawVmaeA($('[data-vmae]'));update();
+const initHash=location.hash.slice(1);if(PAGES.includes(initHash))go(initHash,true);
+</script>
+</body>
+</html>
