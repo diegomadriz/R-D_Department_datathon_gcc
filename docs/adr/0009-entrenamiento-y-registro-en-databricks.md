@@ -169,3 +169,25 @@ versionado, o usar `full` para reproducir el cómputo sin ese paquete. Guided
 demuestra la integración del ajuste y la procedencia de evidencia previa;
 no debe presentarse como una repetición completa de los diagnósticos dentro de
 Databricks. Su compatibilidad remota queda pendiente de integración autorizada.
+
+## Enmienda 2: huella de train estable entre plataformas
+
+**Aceptada el 2026-11-03.** La primera corrida guiada en Databricks se detuvo antes
+de ajustar porque la huella de train no coincidía con la congelada. Una comparación
+de solo lectura, filtrada a `split = 'train'`, midió la causa: 621 filas, `_row_id`,
+grupos, tipos y targets idénticos, y **2 de 9 315 celdas de calidad distintas**, ambas en
+`Physical_Metric_B`, por un máximo de 4.4e-16 (2 ULP). El parseo de texto a float de
+Silver no es idéntico entre el entorno local y serverless; el origen exacto (CPU o
+versión de pandas) no se aisló. Serializar con `%.17g` convertía ese ruido en un fallo.
+
+`train_fingerprint` serializa ahora con 12 dígitos significativos, con los que ambas
+copias producen la misma huella. `train_sha256` de `conf/lockbox_protocol_frozen.json`
+pasa de `aafa1894c81a…` (exacta, `%.17g`) a `b72024737d90…`, recalculada solo con train
+sobre el mismo Gold local, sin cambiar datos, modelos ni resultados oficiales. El paquete
+de evidencia se reexportó para fijar la nueva huella. Se conservan el hash del lockbox,
+las tolerancias del replay y los hashes de los componentes congelados.
+
+La huella ya no detecta cambios por debajo de 12 dígitos. El ajuste en Databricks usa
+esos valores remotos, por lo que sus predicciones pueden diferir mínimamente de las
+locales; el replay sigue siendo el control de que los agregados coinciden. Corregir el
+parseo de Silver queda como mejora posterior, porque cambiaría los valores de Gold.
