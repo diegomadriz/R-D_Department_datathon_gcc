@@ -3,7 +3,7 @@
 La etapa 4 se ejecutó dos veces con `uv run python -m gcc_strength.train --tracking-uri file:./mlruns`.
 Se recalcularon los ajustes y diagnósticos completos en ambas ejecuciones, sin caché de OOF.
 Una tercera ejecución incorporó el R² por tipo y su IC sin cambiar los campos previos.
-Solo se cargó train mediante `load_train`: 621 filas, 600 grupos. El lockbox sigue cerrado.
+En esta fase solo se cargó train mediante `load_train`: 621 filas, 600 grupos.
 La escalera previa y la comparación de arquitecturas se conservan en [Etapa 2](escalera.md)
 y [Etapa 3](multisalida.md). Las estimaciones principales son las de esas etapas con
 HPO anidada; las cifras de `train.py` son diagnóstico condicional a la selección previa.
@@ -153,7 +153,7 @@ Sensibilidad temporal: cinco cortes forward-chaining solo en fronteras de grupo 
 
 Las poblaciones difieren por el calentamiento temporal y no hay fechas confirmadas.
 La brecha es sensibilidad al orden y posible deriva, sin identificación causal.
-El lockbox se asignó aleatoriamente por grupo: medirá interpolación dentro del periodo,
+El lockbox se asignó aleatoriamente por grupo: mide interpolación dentro del periodo,
 no desempeño futuro. La CV temporal, con brechas GPR de +48/+152/+168 MAE,
 es la mejor guía disponible para ese caso, con las salvedades de población y fechas.
 
@@ -208,9 +208,6 @@ indeterminado. Los CSV `physics.csv` registran esas limitaciones por variable.
 Artefactos locales: `outputs/fase3/final/` y `mlruns/` (fuera de git). El notebook
 `06_train.py` es un envoltorio delgado y no se incorporó al bundle.
 
-## Lo que queda sin conocer
+## Resultados del lockbox
 
-Las métricas y la cobertura del lockbox siguen sin conocerse. No se ha abierto ni evaluado.
-Sigue pendiente la revisión independiente de fuga/sobreajuste y la aprobación del predictor.
-La subcobertura por tipo, la escasez de Types 4/5, el optimismo de selección y la sensibilidad
-al orden impiden presentar estas cifras como garantía de operación futura.
+La evaluación única y sus limitaciones se documentan en el [reporte de Fase 4](../fase4/lockbox.md).
