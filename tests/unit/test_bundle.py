@@ -26,7 +26,18 @@ def test_targets_have_no_host_or_profile():
 
 def test_job_task_chain():
     keys = [t["task_key"] for t in JOB["tasks"]]
-    assert keys == ["bootstrap", "bronze", "silver", "gold", "reconcile"]
+    assert keys == [
+        "bootstrap",
+        "bronze",
+        "silver",
+        "gold",
+        "reconcile",
+        "eda",
+        "train",
+        "evaluate",
+        "register",
+        "publish",
+    ]
     for prev, task in zip(JOB["tasks"], JOB["tasks"][1:], strict=False):
         assert task["depends_on"] == [{"task_key": prev["task_key"]}]
 

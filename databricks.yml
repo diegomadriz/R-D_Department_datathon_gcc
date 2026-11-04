@@ -10,6 +10,9 @@ bundle:
   name: gcc_strength
 
 variables:
+  experiment_path:
+    description: Experimento de MLflow del workspace para EDA, train, replay y registro.
+    default: /Workspace/Users/${workspace.current_user.userName}/gcc_strength
   catalog:
     description: Catálogo de Unity Catalog del proyecto (se crea con SQL en el bootstrap).
     default: datathon
@@ -30,7 +33,7 @@ resources:
   jobs:
     gcc_end_to_end:
       name: gcc_end_to_end
-      description: Medallón de punta a punta (bootstrap, Bronze, Silver, Gold, reconciliación).
+      description: Medallón, EDA, entrenamiento auditado, replay verificado, campeón UC y tablas Gold.
       max_concurrent_runs: 1
       tags:
         project: gcc_strength
@@ -43,12 +46,27 @@ resources:
           default: ${workspace.file_path}
         - name: run_id
           default: "{{job.run_id}}"
+        - name: train_mode
+          default: full
+        - name: lockbox_mode
+          default: replay
+        - name: experiment_path
+          default: ${var.experiment_path}
       environments:
         - environment_key: medallion
           spec:
             environment_version: "6"
             dependencies:
               # Ya viene en el entorno 6; se fija para que un cambio de entorno falle a la vista.
+              - pyyaml==6.0.3
+        - environment_key: ml
+          spec:
+            environment_version: "6"
+            dependencies:
+              # Env 6 ya incluye mlflow-skinny 3.12.0; no se instala mlflow completo.
+              - lightgbm==4.6.0
+              - shap==0.51.0
+              - statsmodels==0.14.5
               - pyyaml==6.0.3
       tasks:
         - task_key: bootstrap
@@ -79,11 +97,46 @@ resources:
           environment_key: medallion
           notebook_task:
             notebook_path: ./notebooks/04_dq_reconcile.py
-        # TODO (Fases 2-6): se agregan cuando existan sus notebooks, en este orden:
-        #   eda -> train -> evaluate -> register -> publish_tables -> rubric_audit
-        # - train/evaluate usarán un environment "ml" con environment_version "6" y
-        #   dependencies lightgbm==4.6.0 y shap==0.51.0 (las mismas versiones que pyproject.toml).
-        # - evaluate (lockbox) corre una sola vez, después del gate de auditoría.
+        - task_key: eda
+          depends_on:
+            - task_key: reconcile
+          environment_key: ml
+          notebook_task:
+            notebook_path: ./notebooks/05_eda.py
+        - task_key: train
+          depends_on:
+            - task_key: eda
+          environment_key: ml
+          notebook_task:
+            notebook_path: ./notebooks/06_train.py
+        - task_key: evaluate
+          depends_on:
+            - task_key: train
+          environment_key: ml
+          notebook_task:
+            notebook_path: ./notebooks/07_evaluate.py
+            base_parameters:
+              train_run_id: "{{tasks.train.values.train_run_id}}"
+        - task_key: register
+          depends_on:
+            - task_key: evaluate
+          environment_key: ml
+          notebook_task:
+            notebook_path: ./notebooks/08_register.py
+            base_parameters:
+              train_run_id: "{{tasks.train.values.train_run_id}}"
+              evaluate_run_id: "{{tasks.evaluate.values.evaluate_run_id}}"
+        - task_key: publish
+          depends_on:
+            - task_key: register
+          environment_key: ml
+          notebook_task:
+            notebook_path: ./notebooks/09_publish.py
+            base_parameters:
+              train_run_id: "{{tasks.train.values.train_run_id}}"
+              evaluate_run_id: "{{tasks.evaluate.values.evaluate_run_id}}"
+              register_run_id: "{{tasks.register.values.register_run_id}}"
+        # La auditoría de rúbrica completa y el ROI se incorporarán en su fase de producto.
 
     gcc_reset_schema:
       name: gcc_reset_schema

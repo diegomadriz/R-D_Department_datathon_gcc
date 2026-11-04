@@ -1,33 +1,58 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # 05 · EDA y física (solo train)
-# MAGIC Lee únicamente `split = 'train'` antes de convertir a pandas. Genera los mismos
-# MAGIC resultados locales de Fase 2. No entrena modelos ni evalúa el lockbox.
-# MAGIC Este notebook todavía no forma parte del job del bundle.
+# MAGIC # 05 · eda
+# MAGIC Envoltorio del job: parámetros validados y artefactos compartidos mediante MLflow.
+# MAGIC La lógica y los contratos viven en `src/gcc_strength/` (ADR 0009).
 
 # COMMAND ----------
 
 import os
 import sys
-from pathlib import Path
 
-dbutils.widgets.text("catalog", "datathon")
-dbutils.widgets.text("schema", "gcc")
 dbutils.widgets.text("bundle_root", "")
-dbutils.widgets.text("output_dir", "/tmp/gcc_fase2")
-catalog = dbutils.widgets.get("catalog")
-schema = dbutils.widgets.get("schema")
 bundle_root = dbutils.widgets.get("bundle_root") or os.path.dirname(os.getcwd())
 sys.path.insert(0, os.path.join(bundle_root, "src"))
 
 # COMMAND ----------
 
-from gcc_strength.eda import train_only, write_report
+import tempfile
+from pathlib import Path
 
-# Filter in Spark: no test payload is collected or summarized on the driver.
-train = train_only(
-    spark.table(f"`{catalog}`.`{schema}`.`datathon_data_gold`").where("split = 'train'").toPandas()
+import mlflow
+
+from gcc_strength.databricks_ml import configure_mlflow
+from gcc_strength.job_parameters import parse_notebook_parameters
+
+defaults = {
+    "catalog": "datathon",
+    "schema": "gcc",
+    "experiment_path": "",
+    "train_mode": "full",
+    "lockbox_mode": "replay",
+    "train_run_id": "",
+    "evaluate_run_id": "",
+    "register_run_id": "",
+}
+for name, default in defaults.items():
+    dbutils.widgets.text(name, default)
+parameters = parse_notebook_parameters(
+    "eda", {name: dbutils.widgets.get(name) for name in defaults}
 )
-tables = write_report(train, Path(dbutils.widgets.get("output_dir")))
-display(tables["19_fisica"])
-display(tables["18_cinetica"])
+
+# COMMAND ----------
+
+from gcc_strength.eda import analyze, load_train, make_figures
+from threadpoolctl import threadpool_limits
+
+configure_mlflow(parameters.experiment_path)
+with tempfile.TemporaryDirectory(prefix="gcc-eda-") as work:
+    directory = Path(work)
+    train = load_train((spark, parameters.catalog, parameters.schema))
+    with mlflow.start_run(run_name="eda") as run, threadpool_limits(limits=1):
+        tables = analyze(train)
+        for name, table in tables.items():
+            table.to_csv(directory / f"{name}.csv", index=False)
+        make_figures(train, tables, directory / "figures")
+        mlflow.log_param("train_size", len(train))
+        mlflow.log_artifacts(str(directory))
+        dbutils.jobs.taskValues.set(key="eda_run_id", value=run.info.run_id)
