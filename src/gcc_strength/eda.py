@@ -79,7 +79,9 @@ def load_train(path: Path | str = DEFAULT_GOLD) -> pd.DataFrame:
     if not labels.isin(["train", "test"]).all():
         raise ValueError("Unexpected or missing partition label")
     selected = pd.read_parquet(path, filters=[("split", "==", "train")])
-    return train_only(selected)
+    result = train_only(selected)
+    result.attrs["lockbox_size"] = int(labels.eq("test").sum())
+    return result
 
 
 def descriptive_statistics(train: pd.DataFrame) -> pd.DataFrame:

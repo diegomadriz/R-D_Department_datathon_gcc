@@ -1,0 +1,319 @@
+# Protocolo previo a resultados: ADR 0006. Sin búsqueda sobre validación externa.
+random_state: 42
+cv:
+  n_splits: 5
+  n_repeats: 5
+  temporal_splits: 5
+hpo:
+  inner_splits: 3
+  max_configs: 9
+  objective: mae
+  # Presupuesto por modelo y target: 9 configuraciones en cada entrenamiento externo.
+  # 25 folds externos × 9 configuraciones × 3 folds internos = 675 ajustes internos.
+bootstrap:
+  n_resamples: 10000
+  confidence: 0.95
+models:
+  L0:
+    family: global_mean
+    search_space: {}
+  L1:
+    family: type_mean
+    search_space: {}
+  L2:
+    family: elastic_net_raw
+    search_space:
+      model__alpha: [0.1, 1.0, 10.0]
+      model__l1_ratio: [0.1, 0.5, 0.9]
+  L3:
+    family: elastic_net_physical
+    search_space:
+      model__alpha: [0.1, 1.0, 10.0]
+      model__l1_ratio: [0.1, 0.5, 0.9]
+  L4:
+    family: lightgbm
+    max_configs: 2
+    search_space:
+      model__num_leaves: [7, 15]
+  L5:
+    family: gaussian_process
+    max_configs: 4
+    # ARD por eje: L-BFGS-B dentro del fold, maxiter=8, maxfun=16, sin reinicios.
+    search_space:
+      model__length_scale: [1.0, 3.0]
+      model__noise_level: [0.1, 0.4]
+  Huber:
+    family: robust_linear
+    max_configs: 2
+    search_space:
+      model__regressor__epsilon: [1.35, 1.75]
+stage2:
+  physical_metric_a: [exclude, indicator, submodel]
+  representations: [raw, physical]
+  linear_levels: {raw: L2, physical: L3}
+  comparison_levels: [L4, L5, Huber]
+  monotone_target: Strength1
+  # Mezcla fijada antes de observar OOF; pesos iguales, sin selección de miembros.
+  ensemble_members: [L3_physical_exclude, L4_raw_exclude, L5_physical_exclude]
+  ensemble_gate: paired_ci_below_zero_against_all_finalists_and_l1
+selection:
+  objective: mae_mean
+  tie_tolerance: 1.0e-9
+  families:
+    linear: [L2, L3, Huber]
+    lightgbm: [L4]
+    gaussian_process: [L5]
+  # Empates: columnas medias (suma experto + fallback), complejidad y luego ID.
+  complexity_order: [L2, L3, Huber, L4, L5]
+  a_complexity_order: [exclude, indicator, submodel]
+  monotone_complexity_order: [false, true]
+# Protocolo de Etapa 3: perfiles acoplados por índice, HPO sobre MAE medio de las salidas.
+stage3:
+  max_configs: 4
+  chain_splits: 3
+  conformal_splits: 5
+  alpha: 0.10
+  permutations: 19
+  learning_fractions: [0.25, 0.5, 0.75, 1.0]
+  # (a) referencia; otra arquitectura debe mejorar MAE agregado con IC95% < 0.
+  # (c) exige además IC95% de delta MAE R1 <= 0, sin margen inventado a posteriori.
+  architecture_gate: paired_group_ci
+
+# Finalistas congelados de la CV anidada de etapa 2; ADR 0006.
+final:
+  architecture: a
+  selected_family: gaussian_process
+  # Hiperparámetros constantes del estimador (models.py), además de params por target.
+  fixed_hyperparameters:
+    linear: {alpha: 0.0001, max_iter: 1000, tol: 0.00001, target_scaler: StandardScaler}
+    lightgbm: {n_estimators: 100, learning_rate: 0.05, min_child_samples: 15,
+               reg_lambda: 1.0, random_state: 42, n_jobs: 1, deterministic: true}
+    gaussian_process: {kernel: Matern_ARD_plus_WhiteKernel, nu: 1.5, normalize_y: true,
+                       alpha: 1.0e-8, random_state: 42, maxiter: 8, maxfun: 16, ftol: 1.0e-6}
+  parameter_rule: mode_of_stage2_nested_selections_lexical_tie
+  permutations: 200
+  families:
+    linear:
+      Strength1:
+        candidate: Huber_raw_submodel
+        level: Huber
+        representation: raw
+        physical_metric_a: submodel
+        monotone: false
+        params:
+          model__regressor__epsilon: 1.75
+        features:
+        - ProductType
+        - Physical_Metric_B
+        - Mineral_Phase_B
+        - Mineral_Phase_C
+        - Mineral_Phase_D
+        - Mineral_Phase_E
+        - Mineral_Phase_F
+        - Mineral_Phase_G
+        - Mineral_Phase_H
+        - Chemical_Composition_A
+        - Chemical_Composition_B
+        - Physical_Metric_A
+        - physical_metric_a_missing
+        parameter_source: outputs/fase3/stage2/candidates/Strength1/repeated_group/Huber_raw_submodel/selections.json
+        selection_count: 19
+      Strength28:
+        candidate: Huber_raw_submodel
+        level: Huber
+        representation: raw
+        physical_metric_a: submodel
+        monotone: false
+        params:
+          model__regressor__epsilon: 1.75
+        features:
+        - ProductType
+        - Physical_Metric_B
+        - Mineral_Phase_B
+        - Mineral_Phase_C
+        - Mineral_Phase_D
+        - Mineral_Phase_E
+        - Mineral_Phase_F
+        - Mineral_Phase_G
+        - Mineral_Phase_H
+        - Chemical_Composition_A
+        - Chemical_Composition_B
+        - Physical_Metric_A
+        - physical_metric_a_missing
+        parameter_source: outputs/fase3/stage2/candidates/Strength28/repeated_group/Huber_raw_submodel/selections.json
+        selection_count: 24
+      Strength7:
+        candidate: Huber_raw_indicator
+        level: Huber
+        representation: raw
+        physical_metric_a: indicator
+        monotone: false
+        params:
+          model__regressor__epsilon: 1.75
+        features:
+        - ProductType
+        - Physical_Metric_B
+        - Mineral_Phase_B
+        - Mineral_Phase_C
+        - Mineral_Phase_D
+        - Mineral_Phase_E
+        - Mineral_Phase_F
+        - Mineral_Phase_G
+        - Mineral_Phase_H
+        - Chemical_Composition_A
+        - Chemical_Composition_B
+        - Physical_Metric_A
+        - physical_metric_a_missing
+        parameter_source: outputs/fase3/stage2/candidates/Strength7/repeated_group/Huber_raw_indicator/selections.json
+        selection_count: 19
+    lightgbm:
+      Strength1:
+        candidate: L4_raw_indicator_monotone
+        level: L4
+        representation: raw
+        physical_metric_a: indicator
+        monotone: true
+        params:
+          model__num_leaves: 7
+        features:
+        - ProductType
+        - Physical_Metric_B
+        - Mineral_Phase_B
+        - Mineral_Phase_C
+        - Mineral_Phase_D
+        - Mineral_Phase_E
+        - Mineral_Phase_F
+        - Mineral_Phase_G
+        - Mineral_Phase_H
+        - Chemical_Composition_A
+        - Chemical_Composition_B
+        - Physical_Metric_A
+        - physical_metric_a_missing
+        parameter_source: outputs/fase3/stage2/candidates/Strength1/repeated_group/L4_raw_indicator_monotone/selections.json
+        selection_count: 23
+      Strength28:
+        candidate: L4_physical_indicator
+        level: L4
+        representation: physical
+        physical_metric_a: indicator
+        monotone: false
+        params:
+          model__num_leaves: 15
+        features:
+        - ProductType
+        - Physical_Metric_B
+        - Mineral_Phase_E
+        - Mineral_Phase_G
+        - Mineral_Phase_H
+        - Chemical_Composition_A
+        - Chemical_Composition_B
+        - log_C_over_B
+        - log_D_over_A
+        - log_F_over_E
+        - flag_invalid_log_C_over_B
+        - flag_invalid_log_D_over_A
+        - flag_invalid_log_F_over_E
+        - Physical_Metric_A
+        - physical_metric_a_missing
+        parameter_source: outputs/fase3/stage2/candidates/Strength28/repeated_group/L4_physical_indicator/selections.json
+        selection_count: 17
+      Strength7:
+        candidate: L4_raw_indicator
+        level: L4
+        representation: raw
+        physical_metric_a: indicator
+        monotone: false
+        params:
+          model__num_leaves: 15
+        features:
+        - ProductType
+        - Physical_Metric_B
+        - Mineral_Phase_B
+        - Mineral_Phase_C
+        - Mineral_Phase_D
+        - Mineral_Phase_E
+        - Mineral_Phase_F
+        - Mineral_Phase_G
+        - Mineral_Phase_H
+        - Chemical_Composition_A
+        - Chemical_Composition_B
+        - Physical_Metric_A
+        - physical_metric_a_missing
+        parameter_source: outputs/fase3/stage2/candidates/Strength7/repeated_group/L4_raw_indicator/selections.json
+        selection_count: 18
+    gaussian_process:
+      Strength1:
+        candidate: L5_raw_indicator
+        level: L5
+        representation: raw
+        physical_metric_a: indicator
+        monotone: false
+        params:
+          model__length_scale: 1.0
+          model__noise_level: 0.1
+        features:
+        - ProductType
+        - Physical_Metric_B
+        - Mineral_Phase_B
+        - Mineral_Phase_C
+        - Mineral_Phase_D
+        - Mineral_Phase_E
+        - Mineral_Phase_F
+        - Mineral_Phase_G
+        - Mineral_Phase_H
+        - Chemical_Composition_A
+        - Chemical_Composition_B
+        - Physical_Metric_A
+        - physical_metric_a_missing
+        parameter_source: outputs/fase3/stage2/candidates/Strength1/repeated_group/L5_raw_indicator/selections.json
+        selection_count: 8
+      Strength28:
+        candidate: L5_raw_indicator
+        level: L5
+        representation: raw
+        physical_metric_a: indicator
+        monotone: false
+        params:
+          model__length_scale: 3.0
+          model__noise_level: 0.1
+        features:
+        - ProductType
+        - Physical_Metric_B
+        - Mineral_Phase_B
+        - Mineral_Phase_C
+        - Mineral_Phase_D
+        - Mineral_Phase_E
+        - Mineral_Phase_F
+        - Mineral_Phase_G
+        - Mineral_Phase_H
+        - Chemical_Composition_A
+        - Chemical_Composition_B
+        - Physical_Metric_A
+        - physical_metric_a_missing
+        parameter_source: outputs/fase3/stage2/candidates/Strength28/repeated_group/L5_raw_indicator/selections.json
+        selection_count: 15
+      Strength7:
+        candidate: L5_raw_indicator
+        level: L5
+        representation: raw
+        physical_metric_a: indicator
+        monotone: false
+        params:
+          model__length_scale: 3.0
+          model__noise_level: 0.1
+        features:
+        - ProductType
+        - Physical_Metric_B
+        - Mineral_Phase_B
+        - Mineral_Phase_C
+        - Mineral_Phase_D
+        - Mineral_Phase_E
+        - Mineral_Phase_F
+        - Mineral_Phase_G
+        - Mineral_Phase_H
+        - Chemical_Composition_A
+        - Chemical_Composition_B
+        - Physical_Metric_A
+        - physical_metric_a_missing
+        parameter_source: outputs/fase3/stage2/candidates/Strength7/repeated_group/L5_raw_indicator/selections.json
+        selection_count: 16
