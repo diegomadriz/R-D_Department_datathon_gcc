@@ -85,9 +85,16 @@ def audit_run(parent_id, *, tracking_uri="file:./mlruns"):
         for target in TARGETS:
             if counts[(family, target)] != 1:
                 errors.append(f"Expected exactly one child for {family}/{target}")
-    models = mlflow.search_logged_models(
-        experiment_ids=[parent.info.experiment_id], output_format="list", max_results=5000
-    )
+    models = []
+    page_token = None
+    while True:
+        page = client.search_logged_models(
+            experiment_ids=[parent.info.experiment_id], max_results=50, page_token=page_token
+        )
+        models.extend(page)
+        page_token = page.token
+        if not page_token:
+            break
     for run in children:
         name = run.info.run_id
         if run.info.status != "FINISHED":
