@@ -41,6 +41,10 @@ para seleccionar modelos.
    obligatorios. `mlflow_audit` valida completitud al terminar train y antes del
    replay/registro; cualquier error falla el job. Este control no sustituye una
    revisión independiente de fuga u overfitting.
+   La búsqueda de modelos registrados recorre todas las páginas mediante tokens,
+   con un máximo de 50 por página, y asocia cada modelo por su `source_run_id`.
+   Así conserva la detección de modelos faltantes o duplicados aunque el
+   experimento acumule modelos de otras corridas.
 7. Cada tarea usa un directorio temporal nuevo. MLflow almacena `models.json`,
    los modelos congelados y `training/` (OOF, intervalos, diagnósticos y SHAP).
    Los IDs concretos se transfieren mediante task values y referencias del job;
@@ -84,3 +88,84 @@ para seleccionar modelos.
 - Despliegue, APIs MLflow del workspace y gobierno UC quedan **sin verificación
   de integración** hasta una ejecución autorizada en Databricks. No se presume
   una cuota numérica ni un tiempo garantizado. Guía: [runbook](../databricks_runbook.md).
+
+## Enmienda 1: diagnósticos locales verificados y ajuste final guiado
+
+**Aceptada el 2026-11-03.** Esta enmienda sustituye el modo predeterminado del
+punto 5 y acota la excepción al transporte de resultados del punto 3. Se conserva
+el resto del contrato del job, incluido el replay y sus tolerancias. El propósito
+es aprovechar la evidencia completa ya calculada sobre train, evitando repetir
+diagnósticos costosos en cada prueba de integración de Free Edition.
+
+### Modos y separación del cómputo
+
+- `train_mode=guided` es el modo predeterminado del job. Verifica un paquete de
+  diagnósticos completos locales, carga únicamente train de Gold y ajusta los
+  nueve componentes finales de las tres familias, con arquitectura (a), las 621
+  filas y los perfiles congelados. No vuelve a calcular CV, CV+ externa,
+  permutaciones, curvas de aprendizaje, sensibilidad temporal ni SHAP de F3.
+- `train_mode=full` conserva el cálculo completo anterior. Sirve para reproducir
+  los diagnósticos desde cero sin depender del paquete local; no realiza HPO
+  nueva ni cambia el campeón.
+- `train_mode=quick` conserva los diagnósticos reducidos para comprobaciones
+  técnicas. No produce evidencia completa admisible para el paquete de guided.
+- EDA sigue calculándose sobre train. La tarea evaluate conserva su replay
+  verificado y la recalibración CV+ sobre train prevista en la enmienda 2 del
+  ADR 0008. El ahorro afecta a los diagnósticos F3; no elimina todo el cómputo del
+  job. Los tiempos y el ahorro real permanecen **NO VERIFICADOS** hasta medirlos.
+
+### Paquete y procedencia
+
+1. Se exportan exclusivamente los diagnósticos de un run local completo y
+   finalizado, conservando su ID, manifiesto histórico, versiones y hashes.
+   El manifiesto distingue los archivos contrastados byte a byte con artefactos
+   del run, los reconstruidos desde sus hijos y los CSV locales no archivados.
+   No se cambia la atribución histórica por el commit o entorno del nuevo ajuste.
+2. El paquete vive en `data/training_evidence/`, ignorado por Git y sincronizado
+   explícitamente por el bundle. No se sincronizan `mlruns/` ni otros outputs.
+   Contiene resultados y figuras de train; no contiene el lockbox, modelos
+   serializados ni credenciales. Su transferencia entre integrantes es privada.
+3. `conf/training_evidence_frozen.json` fija el hash del manifiesto del paquete.
+   Antes de abrir un run o ajustar modelos se comprueban ese pin, el inventario
+   exacto y los hashes de los archivos, la configuración, los componentes
+   analíticos compatibles y la identidad estable de train. Los identificadores
+   y etiquetas OOF deben corresponder exclusivamente a train.
+4. El hash histórico de train del productor y el fingerprint estable usado en
+   integración se conservan como identidades distintas. Los cambios conocidos
+   de integración no justifican alterar los hashes históricos ni admitir
+   modificaciones de la lógica analítica sin una revisión explícita.
+5. Paquete ausente, incompleto, modificado, quick o incompatible implica un
+   fallo antes del ajuste. No existe fallback automático a full ni actualización
+   silenciosa del pin. Exportar una nueva evidencia es una acción explícita;
+   no modifica los archivos congelados del lockbox.
+
+El productor histórico no archivó una carpeta `training/` completa: conservó
+métricas y figuras del padre/hijos, pero `folds.csv` y los CSV de intervalos por
+familia solo quedaron en disco local. Se admiten como **snapshot local fijado al
+exportar**, después de comprobar pertenencia y etiquetas de train y concordancia
+con los agregados archivados: métricas CV y brecha de ajuste para folds,
+cobertura y anchos por tipo para intervalos. No se afirma que
+MLflow hubiese registrado sus hashes. El manifiesto declara el nivel de
+verificación por archivo; el pin garantiza integridad desde esta exportación,
+sin constituir una prueba retrospectiva de cuándo se generó cada archivo.
+
+### Registro, consumo y límites
+
+El nuevo run describe un **ajuste final guiado por evidencia previa**, con un
+padre y diez hijos, firmas y ejemplos actuales. Los artefactos y métricas de CV
+importados se atribuyen al run local productor. Cada run declara
+`diagnostics_origin`, `diagnostics_source_run_id`, `evidence_manifest_sha256` y
+el entorno del ajuste. El auditor exige procedencia coherente además de la
+completitud de artefactos. Las tablas Gold, el registro UC y la publicación
+conservan el origen del diagnóstico y el vínculo con el ajuste nuevo.
+
+Los modelos finales se ajustan en el entorno del job y se transfieren a evaluate
+mediante MLflow. El replay conserva todos sus gates; importar diagnósticos no
+autoriza omitirlo, repetir la evaluación oficial ni elegir con test. Registrar y
+publicar requieren el replay aprobado del ajuste de esta misma ejecución.
+
+Un clon nuevo puede recibir el paquete privado y verificarlo contra el pin
+versionado, o usar `full` para reproducir el cómputo sin ese paquete. Guided
+demuestra la integración del ajuste y la procedencia de evidencia previa;
+no debe presentarse como una repetición completa de los diagnósticos dentro de
+Databricks. Su compatibilidad remota queda pendiente de integración autorizada.

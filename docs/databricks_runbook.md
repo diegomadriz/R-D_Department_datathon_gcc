@@ -6,6 +6,9 @@ subir el CSV a mano: el bootstrap lo verifica y copia desde los archivos del bun
 La ejecución realiza medallón, EDA, entrenamiento, replay del resultado oficial,
 registro UC y publicación de tablas. La integración en Databricks está pendiente
 hasta que un integrante ejecute estos pasos; los tests locales no la certifican.
+El modo predeterminado `guided` reutiliza diagnósticos completos locales
+verificados y ajusta los modelos finales en el job. `full` recalcula también
+todos los diagnósticos, sin requerir ese paquete.
 
 ## 1. Requisitos
 
@@ -94,6 +97,35 @@ local. No copiar estos archivos al repositorio ni compartirlos entre integrantes
 
 ## 4. Validar y desplegar
 
+### Preparar la evidencia de train para guided
+
+En la máquina que conserva la corrida local completa, exportar una vez:
+
+```text
+uv run python -m gcc_strength.training_evidence export --source outputs/fase3/final
+uv run python -m gcc_strength.training_evidence verify
+```
+
+La exportación contrasta los diagnósticos con el run MLflow local de origen y
+genera `data/training_evidence/` y el pin
+`conf/training_evidence_frozen.json`. No entrena ni abre el lockbox. El directorio
+del paquete queda fuera de Git; el pin sí forma parte del proyecto. No exportar
+desde una corrida quick ni reemplazar un pin para aceptar resultados distintos.
+
+Los demás integrantes reciben **solo esa carpeta**, por un canal privado del
+equipo, y la colocan en `data/training_evidence/`. Para verificarla necesitan Gold
+local con el mismo train; si ya está disponible, ejecutar el comando `verify`
+anterior. La verificación del job usa directamente train de Gold en Databricks.
+El manifiesto conserva la procedencia por archivo, incluidas las limitaciones de
+los CSV locales que no se archivaron en el run histórico. No transferir `mlruns/`,
+credenciales ni el resultado oficial del lockbox.
+
+Un clon sin paquete puede usar `train_mode=full`. Su despliegue no depende de que
+exista `data/training_evidence/`; intentar guided sin ella falla antes del ajuste.
+No hay fallback automático que empiece a consumir cómputo de full.
+
+### Despliegue del bundle
+
 Desde la raíz del repo:
 
 ```text
@@ -103,7 +135,9 @@ databricks bundle deploy -t <target> -p <perfil>
 
 La validación necesita autenticación para resolver el usuario actual; no es una
 validación offline. Deploy sincroniza `src`, `notebooks`, `conf` y `data`, y crea
-los jobs. Catálogo y esquema se crean por SQL al ejecutar bootstrap.
+los jobs. Una inclusión explícita sincroniza el paquete privado de evidencia
+cuando existe; no se suben otros outputs ni el tracking local. Catálogo y esquema
+se crean por SQL al ejecutar bootstrap.
 
 Targets disponibles: `diego` (por defecto), `ricardo` y `christopher`. Son iguales;
 no contienen hosts ni perfiles. **El perfil `-p` selecciona la cuenta**, el target
@@ -129,21 +163,31 @@ el experimento. Se recomienda esa ruta personal; la compartida exige permisos.
 
 ## 5. Ejecutar
 
+Con el paquete verificado, el comando predeterminado usa guided:
+
 ```text
 databricks bundle run gcc_end_to_end -t <target> -p <perfil>
 ```
 
-Primera prueba con diagnósticos baratos:
+Para reproducir todos los diagnósticos desde cero, sin paquete:
+
+```text
+databricks bundle run gcc_end_to_end -t <target> -p <perfil> --params train_mode=full
+```
+
+También se conserva la prueba con diagnósticos reducidos:
 
 ```text
 databricks bundle run gcc_end_to_end -t <target> -p <perfil> --params train_mode=quick
 ```
 
-`lockbox_mode` vale `replay` y no admite `first`. `full` es el default de train.
-Quick reduce diagnósticos, no el ajuste de los predictores finales ni el replay:
-ambos conservan las 621 filas de train y los perfiles congelados. Sus métricas
-CV y OOF reducidas llevan `train_mode=quick` y no sustituyen la evidencia completa.
-También registra una versión UC y mueve el alias si pasan los gates técnicos.
+`lockbox_mode` vale `replay` y no admite `first`. Los tres modos conservan las 621
+filas de train y los perfiles congelados para el ajuste final. Guided no recalcula
+CV, CV+ externa, permutaciones, aprendizaje, sensibilidad temporal ni SHAP de F3:
+importa sus resultados con `diagnostics_origin=local`, el run productor y el hash
+del manifiesto. EDA y el replay (incluida su calibración de train) siguen corriendo.
+Quick produce métricas CV y OOF reducidas y no sustituye evidencia completa.
+Cualquiera de los modos registra una versión UC y mueve el alias si pasa los gates.
 
 | Tarea | Tiempo orientativo por ejecución |
 |---|---|
@@ -152,6 +196,7 @@ También registra una versión UC y mueve el alias si pasan los gates técnicos.
 | eda | 1–5 min, con 2 000 remuestreos descriptivos |
 | train full | 10–30 min; referencia local histórica ≈8 min, serverless usa permutaciones secuenciales |
 | train quick | 1–5 min; prueba local ≈19 s sin arranque del entorno |
+| train guided | Tiempo remoto NO VERIFICADO; verifica evidencia y hace solo el ajuste final y logging |
 | evaluate | 1–5 min; conserva bootstrap 10 000 y calibración CV+ completa |
 | register | 0.5–3 min |
 | publish | 1–5 min |
@@ -162,6 +207,9 @@ instalación incluidos. El consumo depende del hardware y de la caché del entor
 no existe una conversión verificada a DBU ni un importe monetario para este job.
 La cuota diaria gratuita no tiene una cifra publicada. Un solo full puede agotarla;
 quick tampoco es gratuito en términos de cuota. No lanzar varios jobs a la vez.
+No hay una cifra de ahorro medida para guided. El primer intento quick falló en
+la consulta de modelos de MLflow; la paginación se corrigió localmente, pero eso
+no certifica todavía el resto de la integración.
 
 ## 6. Verificar
 
@@ -191,6 +239,9 @@ UNION ALL SELECT 'quarantine', count(*) FROM datathon.gcc.silver_quarantine;
 SELECT split, count(*) AS n FROM datathon.gcc.datathon_data_gold GROUP BY split;
 SELECT scope, count(*) AS n FROM datathon.gcc.gold_model_metrics GROUP BY scope;
 SELECT train_mode, train_run_id, evaluate_run_id, model_version, count(*) AS n
+FROM datathon.gcc.gold_predictions GROUP BY ALL;
+SELECT diagnostics_origin, diagnostics_source_run_id, evidence_manifest_sha256,
+       count(*) AS n
 FROM datathon.gcc.gold_predictions GROUP BY ALL;
 ```
 
@@ -228,7 +279,10 @@ databricks registered-models get datathon.gcc.gcc_strength_champion --include-al
 
 Debe existir el alias `champion` y su versión. En Catalog Explorer comprobar los
 tags `train_run_id`, `evaluate_run_id`, `selected_family=gaussian_process`,
-`architecture=a`, `train_mode`. Deben coincidir con el run del job y las tablas.
+`architecture=a`, `train_mode` y la procedencia del diagnóstico. En guided, el
+origen debe ser local y el run productor debe coincidir con el paquete fijado;
+el nuevo `train_run_id` identifica el ajuste del job, no el cálculo histórico de CV.
+Los valores deben coincidir con el run del job y las tablas.
 El alias se consulta como `models:/datathon.gcc.gcc_strength_champion@champion`.
 
 ## 7. Reset y repetición desde cero
@@ -270,6 +324,10 @@ MLflow; las tablas se sobrescriben. Nunca borrar intentos locales para reintenta
 - **Dependencia ausente:** revisar el environment `ml`, versión 6 y sus pins.
   `statsmodels` es necesario para EDA; MLflow skinny ya viene en el runtime.
   Revisar el log de instalación antes de volver a gastar cuota.
+- **Evidencia ausente o incompatible en guided:** comprobar la carpeta privada,
+  el pin versionado y sus hashes. No actualizar el pin ni cambiar la configuración
+  para que pase. Usar full solo como una ejecución deliberada con su presupuesto;
+  guided nunca cambia de modo automáticamente.
 - **Replay falla:** abrir `comparison.json` y revisar hashes, versiones y linaje.
   El job debe quedar fallido; no ampliar tolerancia ni cambiar agregados para
   promover el modelo. Documentar la discrepancia antes de repetir una integración.
