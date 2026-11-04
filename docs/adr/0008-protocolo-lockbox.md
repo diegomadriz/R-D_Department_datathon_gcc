@@ -79,3 +79,51 @@ El CLI usa rutas fijas para Gold y salida. Tras el gate, el comando humano previ
 ```bash
 GCC_LOCKBOX_AUTHORIZED=1 uv run python -m gcc_strength.lockbox --tracking-uri file:./mlruns --parent-run-id d90aa4d34750448b9b608383237660d5
 ```
+
+## Enmienda 2: replay verificado en Databricks
+
+El resultado oficial sigue siendo la única evaluación local documentada en
+[Fase 4](../fase4/lockbox.md). Para reproducir el pipeline completo en cuentas
+Free Edition, el job incorpora una verificación de portabilidad explícita:
+`lockbox_mode=replay`. No existe modo `first` en el job. No se usa el replay para
+cambiar features, outliers, hiperparámetros, arquitectura, familia ni umbrales.
+Esta enmienda autoriza la lectura de test exclusivamente dentro de `lockbox.py`
+para recalcular y contrastar agregados; no autoriza otro intento oficial.
+
+- `conf/lockbox_result_frozen.json` copia **solo** métricas, IC, coberturas,
+  monotonía, adversarial y constantes de arquitectura/cobertura del resultado
+  oficial. Excluye URIs de modelos, run IDs y cualquier dato fila a fila.
+- `conf/lockbox_protocol_frozen.json` fija el hash de `models.yaml`, el hash del
+  split, la identidad del train ordenado (calidad, etiquetas y metadatos de
+  partición, sin timestamps de ingesta) y hashes de componentes del predictor.
+  Cambiarlos implica una nueva decisión; no se regeneran durante el job.
+- Se verifican metadatos de Gold y grupos disjuntos antes de abrir calidad del
+  lockbox. Luego se repite el gate adversarial original; si falla, no se abren
+  etiquetas. Los filtros de partición UC se aplican antes de `toPandas`.
+- Se usan los modelos finales del run train de **esta ejecución**, ajustados con
+  los perfiles congelados y las 621 filas completas incluso en `quick`. Se exige
+  completitud MLflow, configuración y huella de train coincidentes. El GPR
+  multisalida evaluado es exactamente el que luego se registra, sin reajuste.
+- Se reutilizan el código de métricas, bootstrap agrupado (10 000 remuestreos,
+  semilla 42), monotonía y CV+ de la evaluación original. Los modelos de
+  calibración CV+ se ajustan solo con train. Para las brechas test−CV se reconstruye
+  la referencia CV oficial desde los agregados congelados; los diagnósticos quick
+  no sustituyen esa referencia.
+- Cada agregado numérico debe satisfacer
+  `abs(actual−frozen) <= replay_abs_tol + replay_rel_tol * abs(frozen)`.
+  YAML declara `replay_rel_tol=0.02` y `replay_abs_tol=1e-8` para diferencias de
+  BLAS Linux/macOS. Con referencia cero manda la tolerancia absoluta; nulls,
+  cadenas, banderas y estructura deben coincidir. El 2% es un margen de
+  portabilidad declarado, no se ajusta a posteriori para lograr un pase.
+- MLflow registra los agregados, cada diferencia absoluta como métrica,
+  `comparison.json` con diferencias absolutas/relativas y `replay_passed`.
+  Cualquier discrepancia falla la tarea y bloquea registro/publicación.
+- El CLI local conserva su modo oficial, autorización, búsqueda de intentos y
+  creación exclusiva de `attempt.json`. Replay exige `--mode replay`, run de train
+  y `--output` separado; rechaza el directorio oficial y sus descendientes o
+  ancestros. No reserva intentos, no borra ni modifica `outputs/fase4/lockbox/`.
+  Solo se utiliza localmente cuando se autorice expresamente una verificación.
+
+La repetición verifica reproducibilidad del resultado histórico, no aporta otra
+muestra independiente ni reemplaza su interpretación o limitaciones. El registro
+UC automático posterior y su linaje se especifican en el [ADR 0009](0009-entrenamiento-y-registro-en-databricks.md).
