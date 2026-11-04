@@ -198,6 +198,7 @@ svg .val{font-size:12px;fill:var(--ink);font-weight:500}
     <button data-go="mod">Modelos y confianza</button>
     <button data-go="val">Valor</button>
     <button data-go="evi">Evidencia</button>
+    <button data-go="demo">Demo</button>
   </nav>
   <div class="meta-r">Modelo <b>GPR · champion</b><br>Datos al <b>03 nov 2026</b></div>
 </header>
@@ -407,6 +408,14 @@ svg .val{font-size:12px;fill:var(--ink);font-weight:500}
     <section class="panel"><div class="ph"><h2>Qué supuestos mueven más el ahorro</h2><div class="r"><span class="st watch"><i></i><b>Valores de ejemplo · por validar con GCC</b></span></div><p>Variación del ahorro anual al llevar cada supuesto y cada una de las cuatro palancas de su valor bajo a su valor alto.</p></div><div data-torn></div><p class="src">Fuente: <span class="id">datathon.gcc.gold_roi_scenarios</span> · Monte Carlo de 10,000 corridas, semilla 42 · <b>Valores de ejemplo · por validar con GCC</b>.</p></section>
     <section class="panel"><div class="ph"><h2>Valor de la precisión</h2><div class="r"><span class="st watch"><i></i><b>Valores de ejemplo · por validar con GCC</b></span></div><p>Ahorro anual estimado según el error del modelo a 28 días.</p></div><div data-vmae></div><p class="src"><b>Valores de ejemplo · por validar con GCC</b>; unidades (psi) sin confirmar.</p></section>
   </div>
+</main>
+
+<!-- DEMO -->
+<main class="page" data-page="demo">
+  <div class="head"><div><h1>Demo</h1><div class="sub">Recorrido del proyecto: del dato de calidad a la predicción de resistencia.</div></div></div>
+  <section class="panel">
+    <video data-demo-video src="/demo_gcc.mp4" controls preload="metadata" playsinline style="display:block;width:100%;height:auto;background:#000">Tu navegador no puede reproducir este video.</video>
+  </section>
 </main>
 
 <!-- EVIDENCIA -->
@@ -1346,10 +1355,10 @@ function drawVmaeA(host){
 const SCA=[
   ['1. Negocio y física','15%','watch','En curso','Cuatro palancas de ahorro (merma, silos, aditivos y clínker) y física documentada'],
   ['2. Medallón en Unity Catalog','20%','ok','Completo','791 = 773 limpias + 18 en cuarentena'],
-  ['3. EDA y MLflow','20%','watch','En curso','11 runs auditados en local; corrida completa en Databricks pendiente'],
+  ['3. EDA y MLflow','20%','watch','En curso','Job de punta a punta verificado en Databricks: 10 tareas, modelo registrado y replay aprobado'],
   ['4. Modelo multisalida','20%','watch','Pendiente de benchmark','Supera la referencia propia L1; benchmark oficial sin recibir · Test: MAE 96.2 / 228.6 / 280.8 psi'],
   ['5. Dashboard','15%','watch','En curso','Simulador interactivo, seis vistas de §3.4 y alertas dinámicas en esta aplicación'],
-  ['6. Presentación','10%','none','Pendiente','Video y sesión de preguntas']
+  ['6. Presentación','10%','watch','En curso','Video en la página Demo; sesión de preguntas pendiente']
 ];
 $('[data-score]').innerHTML=`<table class="t"><thead><tr><th>Criterio</th><th class="n">Peso</th><th>Estado</th></tr></thead><tbody>${SCA.map(r=>`<tr><td>${r[0]}<div class="xs ink3">${r[4]}</div></td><td class="n">${r[1]}</td><td>${stTag(r[2],r[3])}</td></tr>`).join('')}</tbody></table>`;
 $('[data-lineage]').innerHTML=`<table class="t"><thead><tr><th>Tabla</th><th class="n">Versión</th><th class="n">Filas</th></tr></thead><tbody>${[['gold_predictions',14,'773'],['gold_train_ranges',14,'36'],['gold_model_metrics',14,'27'],['gold_feature_importance',14,'36'],['gold_roi_scenarios',6,'10,000'],['rubric_scorecard',22,'6'],['dq_results',22,'19']].map(([t,v,n])=>`<tr><td class="id">datathon.gcc.${t}</td><td class="n">v${v}</td><td class="n ink2">${n}</td></tr>`).join('')}</tbody></table><p class="src"><b>Valores de ejemplo</b> en versiones y conteos de filas, salvo el de predicciones (773 lotes limpios: 621 train + 152 lockbox).</p>`;
@@ -1368,7 +1377,7 @@ $('[data-cov34]').innerHTML=`<table class="t"><thead><tr><th>Vista requerida en 
 $$('[data-jump]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.jump)));
 
 /* ---------- navegación con hashchange y botón Atrás ---------- */
-const PAGES=['sim','res','lotes','mod','val','evi'];
+const PAGES=['sim','res','lotes','mod','val','evi','demo'];
 function redrawActiveCharts(){
   const cur=shown||predictA(S);
   const simP=$('[data-page="sim"]');
@@ -1385,6 +1394,7 @@ function go(k,fromHash=false){
   const target=PAGES.includes(k)?k:'sim';
   $$('[data-go]').forEach(b=>b.dataset.go===target?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current'));
   $$('[data-page]').forEach(p=>p.classList.toggle('on',p.dataset.page===target));
+  if(target!=='demo'){const demo=$('[data-demo-video]');if(demo)demo.pause()}
   scrollTo(0,0);
   if(!fromHash&&location.hash!=='#'+target){
     try{history.pushState(null,'','#'+target)}catch(e){location.hash=target}
