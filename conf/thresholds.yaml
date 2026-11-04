@@ -64,3 +64,6 @@ lockbox:
   near_duplicate_distance: 0.10
   bootstrap_resamples: 10000
   coverage_target: 0.90
+  # Replay de portabilidad; no cambia el resultado oficial (ADR 0008, enmienda 2).
+  replay_rel_tol: 0.02
+  replay_abs_tol: 1.0e-8

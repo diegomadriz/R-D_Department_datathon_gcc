@@ -21,7 +21,12 @@ def violations(source):
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
             name = getattr(node.func, "attr", getattr(node.func, "id", ""))
-            if aliases.get(name, name) in {"evaluate_lockbox", "load_lockbox"}:
+            if aliases.get(name, name) in {
+                "evaluate_lockbox",
+                "load_lockbox",
+                "replay_lockbox",
+                "_read_replay_gold",
+            }:
                 failures.append((node.lineno, "lockbox call"))
         # Inspect comparisons, pandas filter calls, reader predicates and subscripts.
         if isinstance(node, (ast.Compare, ast.Call, ast.Subscript, ast.Assign)):
@@ -36,7 +41,9 @@ def violations(source):
                     )
                     if not is_dict_key:
                         failures.append((child.lineno, "test partition literal"))
-                elif re.search(r"(?:split\s*(?:==|!=)|\bsplit\s+in).*['\"]test['\"]", child.value):
+                elif re.search(
+                    r"(?:split\s*(?:==|!=|=)|\bsplit\s+in).*['\"]test['\"]", child.value
+                ):
                     failures.append((child.lineno, "query filter"))
     return failures
 
@@ -56,6 +63,9 @@ def test_modules_do_not_read_or_filter_lockbox():
         "df.query(\"split == 'test'\")",
         "evaluate_lockbox()",
         "module.load_lockbox()",
+        "replay_lockbox()",
+        "module._read_replay_gold()",
+        "spark.table(name).where(\"split = 'test'\").toPandas()",
         "from gcc_strength.lockbox import evaluate_lockbox as evaluate\nevaluate()",
     ],
 )
@@ -67,6 +77,7 @@ def test_detector_allows_train_and_report_keys():
     assert not violations('part = df.loc[df.split.eq("train")]\nreport = {"test": name}')
 
 
-def test_lockbox_not_part_of_bundle():
+def test_official_lockbox_not_part_of_bundle():
     assert "07_lockbox" not in (ROOT / "databricks.yml").read_text()
     assert Path(ROOT / "notebooks/07_lockbox.py").is_file()
+    assert "07_evaluate.py" in (ROOT / "databricks.yml").read_text()

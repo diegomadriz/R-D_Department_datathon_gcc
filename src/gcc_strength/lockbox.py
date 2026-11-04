@@ -30,7 +30,7 @@ from threadpoolctl import threadpool_limits
 
 from gcc_strength.audit import FEATURES, TARGETS
 from gcc_strength.config import ROOT, load_yaml
-from gcc_strength.eda import DEFAULT_GOLD, train_only
+from gcc_strength.eda import DEFAULT_GOLD, load_train, train_only
 from gcc_strength.features import INPUT_COLUMNS
 from gcc_strength.metrics import paired_mae_bootstrap, regression_metrics
 from gcc_strength.models import build_model
@@ -417,7 +417,7 @@ def evaluate_lockbox(
     return result
 
 
-def _evaluate_models(training, future, config, limits, cv_rows, output):
+def _evaluate_models(training, future, config, limits, cv_rows, output, models=None):
     X = future[list(INPUT_COLUMNS)]
     baseline = {}
     for target in TARGETS:
@@ -429,7 +429,7 @@ def _evaluate_models(training, future, config, limits, cv_rows, output):
     evaluated_models = {}
     for family, settings in config["final"]["families"].items():
         specs = [settings[target] for target in TARGETS]
-        model = _fit(training, specs)
+        model = models[family] if models is not None else _fit(training, specs)
         raw = np.column_stack([component.predict(X) for component in model.models_])
         prediction = model.predict(X)
         monotonicity.append(
@@ -492,6 +492,8 @@ def _evaluate_models(training, future, config, limits, cv_rows, output):
                     },
                 )
             )
+        if models is not None:
+            continue
         # Preserve the exact fitted models for later registration without refitting.
         example = training[list(INPUT_COLUMNS)].head(5)
         logged = mlflow.sklearn.log_model(
@@ -513,13 +515,251 @@ def _evaluate_models(training, future, config, limits, cv_rows, output):
     )
 
 
+FROZEN_RESULT = ROOT / "conf/lockbox_result_frozen.json"
+FROZEN_PROTOCOL = ROOT / "conf/lockbox_protocol_frozen.json"
+AGGREGATE_KEYS = (
+    "metrics",
+    "coverage",
+    "monotonicity",
+    "adversarial",
+    "architecture",
+    "coverage_target",
+)
+
+
+def compare_replay(actual, frozen, *, rel_tol, abs_tol=1e-8):
+    """Compare every frozen aggregate, including nulls, flags, counts and nested CIs.
+
+    A zero reference uses abs_tol; numeric differences are relative to abs(reference).
+    Missing/extra keys, list lengths or nonfinite computed values always fail closed.
+    """
+    if not 0 <= rel_tol < 1 or not 0 <= abs_tol < 1:
+        raise ValueError("Invalid replay tolerance")
+    differences = []
+
+    def visit(value, reference, path):
+        if isinstance(reference, dict):
+            if not isinstance(value, dict) or value.keys() != reference.keys():
+                differences.append(dict(path=path, passed=False, reason="keys differ"))
+                return
+            for key in reference:
+                visit(value[key], reference[key], f"{path}.{key}")
+        elif isinstance(reference, list):
+            if not isinstance(value, list) or len(value) != len(reference):
+                differences.append(dict(path=path, passed=False, reason="length differs"))
+                return
+            for index, (item, expected) in enumerate(zip(value, reference, strict=True)):
+                visit(item, expected, f"{path}.{index}")
+        elif isinstance(reference, (int, float)) and not isinstance(reference, bool):
+            numeric = isinstance(value, (int, float)) and not isinstance(value, bool)
+            delta = abs(value - reference) if numeric else float("inf")
+            passed = numeric and np.isfinite(value) and delta <= abs_tol + rel_tol * abs(reference)
+            differences.append(
+                dict(
+                    path=path,
+                    expected=reference,
+                    actual=value,
+                    absolute_difference=delta if np.isfinite(delta) else None,
+                    relative_difference=delta / abs(reference) if reference and numeric else None,
+                    passed=bool(passed),
+                )
+            )
+        elif value != reference or type(value) is not type(reference):
+            differences.append(dict(path=path, passed=False, reason="value differs"))
+
+    visit(actual, frozen, "replay")
+    return dict(passed=all(r["passed"] for r in differences), differences=differences)
+
+
+def _read_replay_gold(source, columns, partition=None):
+    """The only UC/local held-out payload reader; predicates run before collection."""
+    if isinstance(source, tuple):
+        from gcc_strength.catalog import table_fqn
+
+        spark, catalog, schema = source
+        table = spark.table(table_fqn(catalog, schema, "gold"))
+        if partition is not None:
+            if partition != "test":
+                raise ValueError("Only the held-out partition is accepted here")
+            table = table.where("split = 'test'")
+        return table.select(*columns).toPandas()
+    filters = [("split", "==", partition)] if partition is not None else None
+    return pd.read_parquet(source, columns=columns, filters=filters)
+
+
+def replay_lockbox(
+    *,
+    mode,
+    parent_run_id,
+    gold=DEFAULT_GOLD,
+    tracking_uri="file:./mlruns",
+    experiment=None,
+    output,
+    frozen_path=FROZEN_RESULT,
+):
+    """Verify the completed official evaluation without reserving or resetting an attempt.
+
+    Uses fitted models from this job's train run, whose frozen configuration and full
+    training population must match the official protocol even in quick diagnostics mode.
+    No fitted predictor is changed after reading held-out quality or labels.
+    """
+    from gcc_strength.mlflow_audit import audit_run
+    from gcc_strength.provenance import train_fingerprint
+
+    if mode != "replay":
+        raise ValueError("Replay requires explicit mode=replay")
+    output = Path(output).resolve()
+    official = DEFAULT_OUTPUT.resolve()
+    if output == official or official in output.parents or output in official.parents:
+        raise ValueError("Replay output must be separate from the official attempt")
+    protocol = json.loads(FROZEN_PROTOCOL.read_text())
+    config_path = ROOT / "conf/models.yaml"
+    if hashlib.sha256(config_path.read_bytes()).hexdigest() != protocol["models_sha256"]:
+        raise ValueError("Frozen model configuration changed")
+    for name, expected in protocol["source_sha256"].items():
+        if hashlib.sha256((ROOT / "src/gcc_strength" / name).read_bytes()).hexdigest() != expected:
+            raise ValueError(f"Frozen model implementation changed: {name}")
+    stored = read_lockbox(ROOT / "conf/lockbox.sha256")
+    if stored != protocol["lockbox_sha256"]:
+        raise ValueError("Frozen lockbox digest changed")
+    errors = audit_run(parent_run_id, tracking_uri=tracking_uri)
+    if errors:
+        raise ValueError(f"Training artifact audit failed: {errors}")
+    client = MlflowClient(tracking_uri=tracking_uri)
+    parent = client.get_run(parent_run_id)
+    for key, expected in (
+        ("config_hash", protocol["models_sha256"]),
+        ("lockbox_sha256", stored),
+        ("model_train_sha256", protocol["train_sha256"]),
+        ("model_fit_size", "621"),
+    ):
+        if parent.data.params.get(key) != expected:
+            raise ValueError(f"Training run {key} mismatch")
+    frozen = json.loads(Path(frozen_path).read_text())
+    if set(frozen) != set(AGGREGATE_KEYS):
+        raise ValueError("Frozen result must contain aggregates only")
+    config = load_yaml(config_path)
+    limits = load_yaml(ROOT / "conf/thresholds.yaml")["lockbox"]
+    metadata = _read_replay_gold(gold, ["_row_id", "split", GROUP_COL])
+    if (
+        metadata.empty
+        or metadata.isna().any().any()
+        or not metadata._row_id.is_unique
+        or not metadata["split"].isin(["train", "test"]).all()
+    ):
+        raise ValueError("Invalid Gold partition metadata")
+    held = metadata.loc[metadata["split"].eq("test")]
+    fitting = metadata.loc[metadata["split"].eq("train")]
+    lockbox_check(lockbox_digest(held._row_id), stored, len(held))
+    if len(held) != 152 or len(fitting) != 621 or set(held[GROUP_COL]) & set(fitting[GROUP_COL]):
+        raise ValueError("Frozen populations or disjoint groups mismatch")
+    training = load_train(gold).sort_values("_row_id", kind="stable").reset_index(drop=True)
+    if train_fingerprint(training) != protocol["train_sha256"]:
+        raise ValueError("Frozen train inputs changed")
+    future = _read_replay_gold(gold, [*INPUT_COLUMNS, GROUP_COL, "_row_id"], "test")
+    future = future.sort_values("_row_id", kind="stable").reset_index(drop=True)
+    refs_path = client.download_artifacts(parent_run_id, "models.json")
+    refs = json.loads(Path(refs_path).read_text())["families"]
+    if set(refs) != set(config["final"]["families"]):
+        raise ValueError("Missing frozen family model")
+    models = {family: mlflow.sklearn.load_model(uri) for family, uri in refs.items()}
+    # The official CV reference is frozen too; quick diagnostics never rewrite test-CV gaps.
+    cv_rows = {
+        (row["family"], row["target"]): {
+            f"cv_{metric}_mean": row[metric] - row["test_minus_cv"][metric] for metric in METRICS
+        }
+        for row in frozen["metrics"]
+    }
+    output.mkdir(parents=True, exist_ok=False)
+    mlflow.set_tracking_uri(tracking_uri)
+    experiment_id = (
+        mlflow.set_experiment(experiment).experiment_id if experiment else parent.info.experiment_id
+    )
+    with (
+        mlflow.start_run(run_name="lockbox_replay", experiment_id=experiment_id) as run,
+        threadpool_limits(limits=1),
+    ):
+        mlflow.log_params(
+            dict(
+                lockbox_mode=mode,
+                parent_run_id=parent_run_id,
+                lockbox_sha256=stored,
+                replay_rel_tol=limits["replay_rel_tol"],
+                replay_abs_tol=limits["replay_abs_tol"],
+                frozen_result_sha256=hashlib.sha256(Path(frozen_path).read_bytes()).hexdigest(),
+            )
+        )
+        mlflow.set_tag("train_run_id", parent_run_id)
+        adversarial = adversarial_validation(
+            training,
+            future,
+            near_duplicate_distance=limits["near_duplicate_distance"],
+            n_splits=config["cv"]["n_splits"],
+        )
+        _log_metrics(adversarial, "replay_adversarial")
+        if (
+            adversarial["auc"] > limits["adversarial_auc_max"]
+            or adversarial["exact_duplicate_pairs"]
+        ):
+            mlflow.set_tag("replay_passed", "false")
+            raise ValueError("Replay adversarial gate failed before opening labels")
+        labels = _read_replay_gold(gold, ["_row_id", *TARGETS], "test")
+        future = (
+            future.merge(labels, on="_row_id", validate="one_to_one")
+            .sort_values("_row_id")
+            .reset_index(drop=True)
+        )
+        result = _evaluate_models(training, future, config, limits, cv_rows, output, models=models)
+        result["adversarial"] = adversarial
+        aggregates = _json_safe({key: result[key] for key in AGGREGATE_KEYS})
+        comparison = compare_replay(
+            aggregates, frozen, rel_tol=limits["replay_rel_tol"], abs_tol=limits["replay_abs_tol"]
+        )
+        result.update(
+            status="verified" if comparison["passed"] else "failed",
+            run_id=run.info.run_id,
+            train_run_id=parent_run_id,
+            lockbox_sha256=stored,
+        )
+        _write_json(output / "result.json", result)
+        _write_json(output / "comparison.json", comparison)
+        _log_metrics(aggregates, "replay_result")
+        for row in comparison["differences"]:
+            if row.get("absolute_difference") is not None:
+                mlflow.log_metric(row["path"] + ".abs_diff", row["absolute_difference"])
+        mlflow.log_artifacts(str(output))
+        mlflow.set_tag("replay_passed", str(comparison["passed"]).lower())
+        if not comparison["passed"]:
+            raise ValueError("Replay differs from frozen official aggregates; see comparison.json")
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tracking-uri", default="file:./mlruns")
     parser.add_argument("--parent-run-id", required=True)
+    parser.add_argument("--mode", choices=["replay"])
+    parser.add_argument("--gold", type=Path)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--experiment")
     args = parser.parse_args()
+    if args.mode == "replay":
+        if args.output is None:
+            parser.error("replay requires --output outside the official attempt")
+        result = replay_lockbox(
+            mode=args.mode,
+            parent_run_id=args.parent_run_id,
+            gold=args.gold or DEFAULT_GOLD,
+            tracking_uri=args.tracking_uri,
+            experiment=args.experiment,
+            output=args.output,
+        )
+        print(f"{result['status']} {args.output / 'result.json'}")
+        return
+    if args.gold is not None or args.output is not None or args.experiment is not None:
+        parser.error("Custom paths are only supported for explicit replay")
     try:
-        result = evaluate_lockbox(**vars(args))
+        result = evaluate_lockbox(tracking_uri=args.tracking_uri, parent_run_id=args.parent_run_id)
     except Exception:
         print(f"refused {DEFAULT_OUTPUT / 'result.json'}")
         raise SystemExit(1) from None
