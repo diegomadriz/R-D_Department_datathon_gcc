@@ -70,16 +70,28 @@ def assert_train(frame: pd.DataFrame) -> None:
         raise ValueError("Use load_train or train_only before analysis; test rows are forbidden")
 
 
-def load_train(path: Path | str = DEFAULT_GOLD) -> pd.DataFrame:
+def load_train(source=DEFAULT_GOLD) -> pd.DataFrame:
     """Read only persisted train rows, validate their labels, and discard split.
 
     A split-only scan validates the partition vocabulary without accessing test payloads.
     Parquet predicate pushdown excludes test features, targets and metadata from the frame.
     """
-    labels = pd.read_parquet(path, columns=["split"])["split"]
+    if isinstance(source, tuple):
+        from gcc_strength.catalog import table_fqn
+
+        spark, catalog, schema = source
+        table = spark.table(table_fqn(catalog, schema, "gold"))
+        counts = {r["split"]: r["count"] for r in table.groupBy("split").count().collect()}
+        if not set(counts).issubset(PARTITION_LABELS):
+            raise ValueError("Unexpected or missing partition label")
+        result = train_only(table.where("split = 'train'").toPandas())
+        result.attrs["lockbox_size"] = sum(counts.values()) - counts.get("train", 0)
+        result.attrs["gold_table"] = table_fqn(catalog, schema, "gold")
+        return result
+    labels = pd.read_parquet(source, columns=["split"])["split"]
     if not labels.isin(PARTITION_LABELS).all():
         raise ValueError("Unexpected or missing partition label")
-    selected = pd.read_parquet(path, filters=[("split", "==", "train")])
+    selected = pd.read_parquet(source, filters=[("split", "==", "train")])
     result = train_only(selected)
     result.attrs["lockbox_size"] = len(labels) - int(labels.eq("train").sum())
     return result

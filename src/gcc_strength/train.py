@@ -24,12 +24,13 @@ from threadpoolctl import threadpool_limits
 from gcc_strength.audit import TARGETS
 from gcc_strength.config import ROOT, load_yaml
 from gcc_strength.cv import load_model_config, repeated_group_splits, temporal_group_splits
-from gcc_strength.eda import assert_train, load_train
+from gcc_strength.eda import DEFAULT_GOLD, assert_train, load_train
 from gcc_strength.explain import explain_model, physics_consistency_report
 from gcc_strength.features import INPUT_COLUMNS
 from gcc_strength.metrics import compare_oof, paired_mae_bootstrap, within_type_r2_bootstrap
 from gcc_strength.models import build_model, design_size
 from gcc_strength.multioutput import FixedArchitecture
+from gcc_strength.provenance import train_fingerprint
 from gcc_strength.split import GROUP_COL
 from gcc_strength.stage3 import _group_subset, _score_frame, permute_group_labels
 from gcc_strength.uncertainty import coverage_table, cvplus_bounds
@@ -197,7 +198,7 @@ def _log_child(name, target, fitted, n_features, metrics, artifacts, example, da
         mlflow.log_metrics({k: float(v) for k, v in metrics.items() if np.isfinite(v)})
         mlflow.log_input(dataset, context="training")
         mlflow.log_artifacts(str(artifacts))
-        mlflow.sklearn.log_model(
+        logged = mlflow.sklearn.log_model(
             fitted,
             name="model",
             signature=infer_signature(example, fitted.predict(example)),
@@ -208,11 +209,14 @@ def _log_child(name, target, fitted, n_features, metrics, artifacts, example, da
                 "numpy==2.3.4",
                 "lightgbm==4.6.0",
                 "scipy==1.16.3",
+                "statsmodels==0.14.5",
+                "matplotlib==3.10.6",
                 "mlflow-skinny==3.12.0",
                 "pyyaml==6.0.3",
             ],
             code_paths=[str(ROOT / "src/gcc_strength")],
         )
+        return logged.model_uri
 
 
 def _rounded(value):
@@ -227,18 +231,41 @@ def _rounded(value):
     return value
 
 
-def run_training(*, quick=False, tracking_uri="file:./mlruns", output=DEFAULT_OUTPUT):
+def source_revision():
+    """Use Git locally and a content digest in synced workspace files without .git."""
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, stderr=subprocess.DEVNULL
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        digest = hashlib.sha256()
+        for path in sorted(Path(__file__).parent.glob("*.py")):
+            digest.update(path.name.encode())
+            digest.update(path.read_bytes())
+        return "source-sha256:" + digest.hexdigest()
+
+
+def run_training(
+    *,
+    quick=False,
+    tracking_uri="file:./mlruns",
+    experiment=None,
+    source=DEFAULT_GOLD,
+    output=DEFAULT_OUTPUT,
+    permutation_workers=2,
+):
     """Compute every diagnostic afresh; the sole data entry point is load_train."""
     started = time.monotonic()
     config = load_model_config()
     final = config["final"]
     if final["architecture"] != "a":
         raise ValueError("Only independent models with isotonic projection are frozen")
-    train = load_train().sort_values("_row_id", kind="stable").reset_index(drop=True)
+    train = load_train(source).sort_values("_row_id", kind="stable").reset_index(drop=True)
     assert_train(train)
     source_train_size = len(train)
     if source_train_size != 621:
         raise ValueError("The frozen training population must contain 621 rows")
+    fitting_train = train.copy()
     if quick:
         train = _group_subset(train, 0.15).reset_index(drop=True)
     output = Path(output)
@@ -255,12 +282,12 @@ def run_training(*, quick=False, tracking_uri="file:./mlruns", output=DEFAULT_OU
         test_size=train.attrs["lockbox_size"],
         seed=42,
         config_hash=hashlib.sha256((ROOT / "conf/models.yaml").read_bytes()).hexdigest(),
-        git_commit=subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
-        ).strip(),
+        git_commit=source_revision(),
         lockbox_sha256=(ROOT / "conf/lockbox.sha256").read_text().strip(),
         quick=quick,
         fit_size=len(train),
+        model_fit_size=len(fitting_train),
+        model_train_sha256=train_fingerprint(fitting_train),
         cv_splits=n_splits,
         cv_repeats=n_repeats,
     )
@@ -279,12 +306,12 @@ def run_training(*, quick=False, tracking_uri="file:./mlruns", output=DEFAULT_OU
     all_oof, all_folds, all_temporal, all_learning = [], [], [], []
     fitted_models, explanations, physics_reports = {}, {}, {}
     mlflow.set_tracking_uri(tracking_uri)
-    mlflow.set_experiment("gcc-phase3-final-quick" if quick else "gcc-phase3-final")
+    mlflow.set_experiment(experiment or ("gcc-phase3-final-quick" if quick else "gcc-phase3-final"))
     with mlflow.start_run(run_name="final-training") as parent, threadpool_limits(limits=1):
         parent_id = parent.info.run_id
         mlflow.log_params(params)
         dataset = mlflow.data.from_pandas(
-            train[[*INPUT_COLUMNS, *TARGETS]],
+            fitting_train[[*INPUT_COLUMNS, *TARGETS]],
             name="gcc_gold_train",
         )
         mlflow.log_input(dataset, context="training")
@@ -340,7 +367,7 @@ def run_training(*, quick=False, tracking_uri="file:./mlruns", output=DEFAULT_OU
                 pd.concat(timed, ignore_index=True),
                 pd.concat(learning, ignore_index=True),
             )
-            model = _fit(train, specs)
+            model = _fit(fitting_train, specs)
             fitted_models[family] = model
             explanation_parts, physics_parts = [], []
             for j, target in enumerate(TARGETS):
@@ -405,10 +432,10 @@ def run_training(*, quick=False, tracking_uri="file:./mlruns", output=DEFAULT_OU
         arguments = [
             (train, families[selected], diagnostic_folds, b) for b in range(n_permutations)
         ]
-        if quick:
+        if quick or permutation_workers == 1:
             null = [_permutation_task(args) for args in arguments]
         else:
-            with ProcessPoolExecutor(max_workers=2) as executor:
+            with ProcessPoolExecutor(max_workers=permutation_workers) as executor:
                 null = []
                 for count, result in enumerate(executor.map(_permutation_task, arguments), 1):
                     null.append(result)
@@ -467,6 +494,7 @@ def run_training(*, quick=False, tracking_uri="file:./mlruns", output=DEFAULT_OU
             json.dumps(metrics, indent=2, sort_keys=True, allow_nan=False) + "\n"
         )
         example = train[list(INPUT_COLUMNS)].head(5)
+        model_uris = {}
         for family, model in fitted_models.items():
             for j, target in enumerate(TARGETS):
                 directory = output / "artifacts" / family / target
@@ -514,7 +542,7 @@ def run_training(*, quick=False, tracking_uri="file:./mlruns", output=DEFAULT_OU
         numeric = (
             table.loc[table.family.eq(selected)].select_dtypes(include="number").mean().to_dict()
         )
-        _log_child(
+        champion_uri = _log_child(
             "multioutput_a",
             "all",
             fitted_models[selected],
@@ -525,6 +553,32 @@ def run_training(*, quick=False, tracking_uri="file:./mlruns", output=DEFAULT_OU
             dataset,
             params,
         )
+        # Every fitted family is transferred through MLflow, never through task-local /tmp.
+        for family, model in fitted_models.items():
+            if family == selected:
+                model_uris[family] = champion_uri
+                continue
+            logged = mlflow.sklearn.log_model(
+                model,
+                name=f"frozen_{family}",
+                signature=infer_signature(example, model.predict(example)),
+                input_example=example,
+                code_paths=[str(ROOT / "src/gcc_strength")],
+                pip_requirements=[
+                    "scikit-learn==1.7.2",
+                    "pandas==2.3.3",
+                    "numpy==2.3.4",
+                    "scipy==1.16.3",
+                    "statsmodels==0.14.5",
+                    "matplotlib==3.10.6",
+                    "lightgbm==4.6.0",
+                    "mlflow-skinny==3.12.0",
+                    "pyyaml==6.0.3",
+                ],
+            )
+            model_uris[family] = logged.model_uri
+        mlflow.log_dict(dict(families=model_uris, champion=champion_uri), "models.json")
+        mlflow.log_artifacts(str(output), artifact_path="training")
         for name in (
             "metrics.json",
             "manifest.json",
@@ -555,9 +609,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--quick", action="store_true")
     parser.add_argument("--tracking-uri", default="file:./mlruns")
+    parser.add_argument("--experiment")
+    parser.add_argument("--gold", dest="source", type=Path, default=DEFAULT_GOLD)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
-    run_training(quick=args.quick, tracking_uri=args.tracking_uri, output=args.output)
+    run_training(**vars(args))
 
 
 if __name__ == "__main__":

@@ -19,7 +19,9 @@ from gcc_strength.features import INPUT_COLUMNS
 from gcc_strength.mlflow_audit import audit_run
 
 
-def test_quick_cli_reproducible_and_auditable(tmp_path):
+def test_quick_cli_reproducible_and_auditable(tmp_path, medallion):
+    gold = tmp_path / "gold.parquet"
+    medallion.gold.to_parquet(gold, index=False)
     uri = (tmp_path / "mlruns").as_uri()
     outputs = [tmp_path / f"execution-{i}" for i in range(2)]
     for output in outputs:
@@ -29,6 +31,8 @@ def test_quick_cli_reproducible_and_auditable(tmp_path):
                 "-m",
                 "gcc_strength.train",
                 "--quick",
+                "--gold",
+                str(gold),
                 "--tracking-uri",
                 uri,
                 "--output",
@@ -61,7 +65,7 @@ def test_quick_cli_reproducible_and_auditable(tmp_path):
     multi = next(r for r in children if r.data.params["model_type"] == "multioutput_a")
     logged = next(m for m in models if m.source_run_id == multi.info.run_id)
     restored = mlflow.sklearn.load_model(logged.model_uri)
-    prediction = restored.predict(load_train()[list(INPUT_COLUMNS)].head(5))
+    prediction = restored.predict(load_train(gold)[list(INPUT_COLUMNS)].head(5))
     assert prediction.shape == (5, 3)
     assert np.isfinite(prediction).all()
     assert (np.diff(prediction, axis=1) >= 0).all()

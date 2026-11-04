@@ -129,6 +129,52 @@ _COMMON = {
 }
 
 
+CONSUMPTION_COMMENTS = {
+    "model_metrics": "Métricas 3×3 de CV y replay; IC95% por grupos. Resultado oficial conservado.",
+    "feature_importance": "Importancia SHAP descriptiva por familia, target, rama y feature.",
+    "predictions": "Predicciones OOF de train del GPR con intervalos CV+ externos.",
+    "train_ranges": "Rangos de calidad por tipo solo en train; soporte del simulador.",
+}
+for _key, _comment in CONSUMPTION_COMMENTS.items():
+    TABLES[_key] = f"gold_{_key}"
+    TABLE_COMMENTS[_key] = _comment
+    LAYER_TAG[_key] = "gold"
+
+_COMMON.update(
+    {
+        "family": "Familia congelada del modelo.",
+        "target": "Horizonte objetivo; nunca se usa como feature.",
+        "metric": "Métrica: MAE, MAPE porcentual, RMSE o R².",
+        "scope": "CV descriptiva de train o replay verificado del lockbox oficial.",
+        "value": "Estimación puntual: OOF agrupado para CV; replay para lockbox.",
+        "ci_low": "Extremo inferior del IC95% bootstrap por grupos.",
+        "ci_high": "Extremo superior del IC95% bootstrap por grupos.",
+        "cv_mean": "Media de métricas de folds externos; puede diferir del OOF agrupado.",
+        "cv_sd": "Desviación de métricas entre folds externos.",
+        "feature": "Nombre de la variable del modelo o de calidad.",
+        "branch": "Rama experta/fallback del predictor explicada antes de la proyección.",
+        "importance": "Media del valor absoluto SHAP; unidades del target, descriptiva.",
+        "repeat": "Repetición de CV externa.",
+        "fold": "Fold externo: el predictor no vio este grupo al ajustar.",
+        "observed": "Etiqueta observada de train; nunca es feature.",
+        "predicted": "Predicción OOF de train después de proyección monótona.",
+        "lower": "Límite inferior del intervalo CV+ externo nominal 90%.",
+        "upper": "Límite superior del intervalo CV+ externo nominal 90%.",
+        "covered": "Indica si el intervalo OOF contiene la etiqueta observada.",
+        "n_rows": "Número de filas de train del tipo.",
+        "n_observed": "Valores no nulos de calidad en train.",
+        "minimum": "Mínimo observado en train, sin imputación.",
+        "maximum": "Máximo observado en train, sin imputación.",
+        "p05": "Percentil 5 de calidad observado en train.",
+        "p95": "Percentil 95 de calidad observado en train.",
+        "train_mode": "full: diagnósticos completos; quick: diagnósticos reducidos.",
+        "train_run_id": "Run padre MLflow del entrenamiento de esta ejecución.",
+        "evaluate_run_id": "Run MLflow del replay verificado de esta ejecución.",
+        "model_version": "Versión UC del campeón registrado en esta ejecución.",
+    }
+)
+
+
 def column_comment(table_key: str, column: str) -> str:
     """Comment for ``column`` in ``table_key``; raises ``KeyError`` if it is not documented."""
     raw_layer = table_key in {"bronze", "quarantine"}

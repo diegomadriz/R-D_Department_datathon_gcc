@@ -39,6 +39,7 @@ def test_governance_statements(medallion):
         "quarantine": "silver",
         "gold": "gold",
         "dq": "dq",
+        **{key: "gold" for key in uc.CONSUMPTION_COMMENTS},
     }
 
 
