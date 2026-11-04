@@ -162,6 +162,18 @@ quedan como la ruta hacia una versión de producción.
 - **Sin cambio:** Lotes de ejemplo y ROI siguen siendo ilustrativos, rotulados como tales.
   `gold_sim_grid`, el AI/BI y la exportación desde el job quedan pendientes.
 
+## Enmienda 2: acceso abierto
+
+**Aceptada el 2026-11-04.** Sustituye el punto 12: por decisión del equipo se retira la
+contraseña y la app queda abierta para cualquiera con el enlace, sin una protección de
+acceso. Se publican `index.html`, `snapshot.js` (agregados de train, sin filas individuales,
+con celdas de al menos 5 observaciones) y el video de demo, que muestra métricas de test.
+
+El permiso de GCC y el uso de su marca siguen sin confirmar, y esta decisión no los
+resuelve. El encabezado `X-Robots-Tag: noindex, nofollow` pide a los buscadores no indexar
+la app, pero no limita el acceso. Si GCC lo objeta, la app se retira de Vercel y se
+restaura el proxy desde el historial de Git.
+
 ## Sin verificar
 
 - La latencia del SHAP exacto no está medida. Con 4,096 coaliciones, 16 centroides y 621
