@@ -31,9 +31,9 @@ def parse_notebook_parameters(task: str, values: dict[str, str]) -> JobParameter
     experiment = values.get("experiment_path", "")
     if not experiment.startswith("/") or "${" in experiment:
         raise ValueError("experiment_path must be a resolved absolute workspace path")
-    mode = values.get("train_mode", "full")
-    if mode not in {"full", "quick"}:
-        raise ValueError("train_mode must be full or quick")
+    mode = values.get("train_mode", "guided")
+    if mode not in {"guided", "full", "quick"}:
+        raise ValueError("train_mode must be guided, full or quick")
     if values.get("lockbox_mode", "replay") != "replay":
         raise ValueError("The job permits lockbox_mode=replay only")
     ids = {k: values.get(k, "") for k in ("train_run_id", "evaluate_run_id", "register_run_id")}

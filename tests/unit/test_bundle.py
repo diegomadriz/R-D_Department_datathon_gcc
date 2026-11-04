@@ -62,3 +62,10 @@ def test_reset_job_is_guarded():
     reset = BUNDLE["resources"]["jobs"]["gcc_reset_schema"]
     params = {p["name"]: p["default"] for p in reset["parameters"]}
     assert params["confirm_reset"] == ""
+
+
+def test_guided_transport_only_reincludes_private_evidence():
+    assert BUNDLE["sync"]["include"] == ["data/training_evidence/**"]
+    assert "./data" in BUNDLE["sync"]["paths"]
+    assert not any("training_evidence" in path for path in BUNDLE["sync"]["paths"])
+    assert not any("outputs" in path or "mlruns" in path for path in BUNDLE["sync"]["paths"])

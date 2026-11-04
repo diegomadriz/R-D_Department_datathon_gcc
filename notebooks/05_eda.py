@@ -27,7 +27,7 @@ defaults = {
     "catalog": "datathon",
     "schema": "gcc",
     "experiment_path": "",
-    "train_mode": "full",
+    "train_mode": "guided",
     "lockbox_mode": "replay",
     "train_run_id": "",
     "evaluate_run_id": "",

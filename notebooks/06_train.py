@@ -20,14 +20,13 @@ from pathlib import Path
 
 import mlflow
 
-from gcc_strength.databricks_ml import configure_mlflow
 from gcc_strength.job_parameters import parse_notebook_parameters
 
 defaults = {
     "catalog": "datathon",
     "schema": "gcc",
     "experiment_path": "",
-    "train_mode": "full",
+    "train_mode": "guided",
     "lockbox_mode": "replay",
     "train_run_id": "",
     "evaluate_run_id": "",
@@ -41,18 +40,23 @@ parameters = parse_notebook_parameters(
 
 # COMMAND ----------
 
+from gcc_strength.guided_training import run_guided_training
 from gcc_strength.mlflow_audit import audit_run
 from gcc_strength.train import run_training
 
-configure_mlflow(parameters.experiment_path)
 with tempfile.TemporaryDirectory(prefix="gcc-train-") as work:
-    parent_id = run_training(
+    trainer = run_guided_training if parameters.train_mode == "guided" else run_training
+    options = (
+        {"evidence": Path(bundle_root) / "data/training_evidence"}
+        if parameters.train_mode == "guided"
+        else {"quick": parameters.train_mode == "quick", "permutation_workers": 1}
+    )
+    parent_id = trainer(
         source=(spark, parameters.catalog, parameters.schema),
-        quick=parameters.train_mode == "quick",
         tracking_uri="databricks",
         experiment=parameters.experiment_path,
         output=Path(work) / "training",
-        permutation_workers=1,
+        **options,
     )
     errors = audit_run(parent_id, tracking_uri="databricks")
     mlflow.tracking.MlflowClient().set_tag(

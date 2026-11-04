@@ -29,8 +29,11 @@ def parameters():
 @pytest.mark.parametrize("task", ML_TASKS)
 def test_notebook_parameters(task):
     parsed = parse_notebook_parameters(task, parameters())
-    assert parsed.train_mode == "full" and parsed.lockbox_mode == "replay"
+    assert parsed.train_mode == "guided" and parsed.lockbox_mode == "replay"
     assert parsed.catalog == "datathon" and parsed.schema == "gcc"
+    assert (
+        parse_notebook_parameters(task, {**parameters(), "train_mode": "full"}).train_mode == "full"
+    )
     assert (
         parse_notebook_parameters(task, {**parameters(), "train_mode": "quick"}).train_mode
         == "quick"
@@ -187,7 +190,7 @@ def test_bundle_replay_and_pinned_ml_environment():
     bundle = yaml.safe_load((ROOT / "databricks.yml").read_text())
     job = bundle["resources"]["jobs"]["gcc_end_to_end"]
     params = {p["name"]: p["default"] for p in job["parameters"]}
-    assert params["lockbox_mode"] == "replay" and params["train_mode"] == "full"
+    assert params["lockbox_mode"] == "replay" and params["train_mode"] == "guided"
     assert params["experiment_path"] == "${var.experiment_path}"
     assert job["max_concurrent_runs"] == 1
     ml = next(e["spec"] for e in job["environments"] if e["environment_key"] == "ml")
@@ -288,7 +291,18 @@ def test_registration_keeps_train_model_and_links_both_runs(monkeypatch, tmp_pat
     import gcc_strength.databricks_ml as module
 
     calls = []
+    provenance = dict(
+        train_mode="guided",
+        diagnostics_origin="local",
+        diagnostics_source_run_id="producer",
+        evidence_manifest_sha256="abc",
+        fitting_origin="databricks",
+        diagnostics_metrics_status="historical_imported",
+    )
     client = SimpleNamespace(
+        get_run=lambda _: SimpleNamespace(
+            data=SimpleNamespace(params={"train_mode": "guided", **provenance}, tags=provenance)
+        ),
         set_model_version_tag=lambda *args: calls.append(("tag", args)),
         set_registered_model_alias=lambda *args: calls.append(("alias", args)),
     )

@@ -45,6 +45,29 @@ def verified_replay(train_run_id, evaluate_run_id, destination):
     return result
 
 
+def training_provenance(train_run_id, train_mode):
+    """Carry diagnostic origin from the exact producer, including model versions."""
+    run = MlflowClient().get_run(train_run_id)
+    params, tags = run.data.params, run.data.tags
+    actual_mode = params.get("train_mode", "quick" if params.get("quick") == "True" else "full")
+    if actual_mode != train_mode:
+        raise ValueError("Training mode does not match the upstream training run")
+    if actual_mode == "guided":
+        from gcc_strength.guided_training import PROVENANCE_KEYS
+
+        if any(not params.get(k) or params.get(k) != tags.get(k) for k in PROVENANCE_KEYS):
+            raise ValueError("Guided training provenance is missing or inconsistent")
+        return {key: params[key] for key in PROVENANCE_KEYS}
+    return dict(
+        train_mode=actual_mode,
+        diagnostics_origin="databricks"
+        if mlflow.get_tracking_uri().startswith("databricks")
+        else "local",
+        diagnostics_source_run_id=train_run_id,
+        evidence_manifest_sha256="",
+    )
+
+
 def register_champion(parameters, destination):
     """Register the existing multioutput pyfunc flavor; never refit or select a model."""
     p = parameters
@@ -53,6 +76,7 @@ def register_champion(parameters, destination):
     errors = audit_run(p.train_run_id, tracking_uri="databricks")
     if errors:
         raise ValueError(f"Training artifact audit failed: {errors}")
+    provenance = training_provenance(p.train_run_id, p.train_mode)
     refs = download_json(p.train_run_id, "models.json", destination)
     # selected_family and architecture are decisions frozen before the official lockbox.
     if refs["families"]["gaussian_process"] != refs["champion"]:
@@ -64,7 +88,7 @@ def register_champion(parameters, destination):
         lineage = dict(
             train_run_id=p.train_run_id,
             evaluate_run_id=p.evaluate_run_id,
-            train_mode=p.train_mode,
+            **provenance,
             architecture="a",
             selected_family="gaussian_process",
         )
@@ -86,7 +110,9 @@ def register_champion(parameters, destination):
         return record
 
 
-def build_consumption_tables(train, training_dir, replay, *, train_mode, n_resamples=10000):
+def build_consumption_tables(
+    train, training_dir, replay, *, train_mode, n_resamples=10000, provenance=None
+):
     """Build aggregate scores and train-only OOF/ranges without opening Gold here.
 
     CV CIs use whole-group bootstrap over repeated OOF predictions, retaining all
@@ -173,6 +199,13 @@ def build_consumption_tables(train, training_dir, replay, *, train_mode, n_resam
     }
     for frame in tables.values():
         frame["train_mode"] = train_mode
+        if provenance:
+            for key in (
+                "diagnostics_origin",
+                "diagnostics_source_run_id",
+                "evidence_manifest_sha256",
+            ):
+                frame[key] = provenance[key]
     return tables
 
 
@@ -190,11 +223,21 @@ def publish_tables(spark, parameters, destination):
         or registration["evaluate_run_id"] != p.evaluate_run_id
     ):
         raise ValueError("Registration lineage mismatch")
+    provenance = training_provenance(p.train_run_id, p.train_mode)
+    if any(registration.get(k) != v for k, v in provenance.items()):
+        raise ValueError("Registration diagnostic provenance mismatch")
     folder = MlflowClient().download_artifacts(p.train_run_id, "training", str(destination))
     tables = build_consumption_tables(
-        load_train((spark, p.catalog, p.schema)), folder, replay, train_mode=p.train_mode
+        load_train((spark, p.catalog, p.schema)),
+        folder,
+        replay,
+        train_mode=p.train_mode,
+        provenance=provenance,
     )
     with mlflow.start_run(run_name="publish") as run:
+        mlflow.set_tags(
+            {**provenance, "train_run_id": p.train_run_id, "evaluate_run_id": p.evaluate_run_id}
+        )
         for key, frame in tables.items():
             frame["train_run_id"] = p.train_run_id
             frame["evaluate_run_id"] = p.evaluate_run_id

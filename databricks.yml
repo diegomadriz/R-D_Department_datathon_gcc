@@ -23,6 +23,8 @@ variables:
 # Solo se sincroniza lo que el job necesita. `src/` se importa desde estos archivos
 # (sys.path), sin construir un wheel (ADR 0004).
 sync:
+  include:
+    - data/training_evidence/**
   paths:
     - ./src
     - ./notebooks
@@ -47,7 +49,7 @@ resources:
         - name: run_id
           default: "{{job.run_id}}"
         - name: train_mode
-          default: full
+          default: guided
         - name: lockbox_mode
           default: replay
         - name: experiment_path

@@ -167,7 +167,16 @@ _COMMON.update(
         "maximum": "Máximo observado en train, sin imputación.",
         "p05": "Percentil 5 de calidad observado en train.",
         "p95": "Percentil 95 de calidad observado en train.",
-        "train_mode": "full: diagnósticos completos; quick: diagnósticos reducidos.",
+        "train_mode": (
+            "guided: diagnósticos locales verificados y ajuste final; "
+            "full: recalcula diagnósticos completos; quick: diagnósticos reducidos."
+        ),
+        "diagnostics_origin": "Entorno que produjo los diagnósticos de train: local o databricks.",
+        "diagnostics_source_run_id": "Run MLflow original que calculó los diagnósticos de train.",
+        "evidence_manifest_sha256": (
+            "SHA-256 del manifiesto del paquete de diagnósticos importado; "
+            "vacío cuando se recalculan en esta ejecución."
+        ),
         "train_run_id": "Run padre MLflow del entrenamiento de esta ejecución.",
         "evaluate_run_id": "Run MLflow del replay verificado de esta ejecución.",
         "model_version": "Versión UC del campeón registrado en esta ejecución.",
